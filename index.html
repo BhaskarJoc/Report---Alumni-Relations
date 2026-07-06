@@ -129,9 +129,11 @@ select.month-select{
 .podium-block.r1{padding-top:32px; border-top-color:var(--gold);}
 .podium-block.r2{border-top-color:var(--silver);}
 .podium-block.r3{border-top-color:var(--bronze);}
+.podium-block.r4{border-top-color:var(--teal);}
 .podium-block.r1{animation-delay:.05s;}
 .podium-block.r2{animation-delay:.18s;}
 .podium-block.r3{animation-delay:.3s;}
+.podium-block.r4{animation-delay:.42s;}
 @keyframes rise{to{transform:translateY(0); opacity:1;}}
 .rank-badge{
   font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:12px;
@@ -142,6 +144,7 @@ select.month-select{
 .r1 .rank-badge{background:var(--gold);}
 .r2 .rank-badge{background:var(--silver);}
 .r3 .rank-badge{background:var(--bronze);}
+.r4 .rank-badge{background:var(--teal);}
 .podium-campus{font-weight:700; font-size:15px; margin:0 0 4px;}
 .podium-stat{font-family:'Fraunces',serif; font-weight:700; font-size:32px; color:var(--ink); margin:6px 0 2px;}
 .podium-label{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em;}
@@ -381,7 +384,6 @@ body.pdf-export-mode .month-bar select{display:none;}
   <a href="#sec-campus">Campus Ranking</a>
   <a href="#sec-leaders">Department Leaders</a>
   <a href="#sec-dept">Department Ranking</a>
-  <a href="#sec-course">Course Ranking</a>
   <a href="#sec-trend">Trends &amp; Health</a>
 </div>
 
@@ -434,7 +436,7 @@ body.pdf-export-mode .month-bar select{display:none;}
       <div class="kpi-strip" id="ucKpiStrip" style="margin-top:0; margin-bottom:16px"></div>
       <div class="table-scroll">
         <table>
-          <thead><tr><th>Campus</th><th>Department</th><th style="text-align:right">Connections</th><th style="text-align:right">Followers</th><th style="text-align:right">Posts</th><th style="text-align:right">Rank</th><th>Updated by</th><th></th></tr></thead>
+          <thead><tr><th>Campus</th><th>Department</th><th style="text-align:right">Connections</th><th style="text-align:right">Followers</th><th style="text-align:right">Growth from last month</th><th style="text-align:right">Posts</th><th style="text-align:right">Rank</th><th>Updated by</th><th></th></tr></thead>
           <tbody id="manageTableBody"></tbody>
         </table>
       </div>
@@ -518,28 +520,6 @@ body.pdf-export-mode .month-bar select{display:none;}
           <tbody id="deptTableBody"></tbody>
         </table>
       </div>
-    </div>
-  </section>
-
-  <section id="sec-course">
-    <div class="section-head">
-      <div>
-        <p class="eyebrow">04 — Course Ranking</p>
-        <h2 class="section-title">Course &amp; program leaderboard</h2>
-        <p class="section-sub">Programs pulled from the "Programs / Courses" field, ranked by the combined followers of every department that offers them.</p>
-      </div>
-    </div>
-    <div class="panel section-toolbar">
-      <div class="export-toolbar" style="margin-bottom:0">
-        <label for="courseCampusFilter">Filter by campus</label>
-        <select id="courseCampusFilter"></select>
-      </div>
-    </div>
-    <div class="panel table-scroll">
-      <table>
-        <thead><tr><th>#</th><th>Course / Program</th><th style="text-align:right">Offered by</th><th style="text-align:right">Posts</th><th style="text-align:right">Followers</th></tr></thead>
-        <tbody id="courseTableBody"></tbody>
-      </table>
     </div>
   </section>
 
@@ -686,7 +666,6 @@ body.pdf-export-mode .month-bar select{display:none;}
 
   <footer>
     <p>GEHU Alumni Relations · LinkedIn Command Center. <b id="footerUpdated">—</b></p>
-    <button class="reset-link" id="resetLink">Restore original demo snapshot</button>
   </footer>
 
 </div>
@@ -1226,7 +1205,6 @@ function renderAll(){
     document.getElementById('deptTabs').innerHTML = "";
     document.getElementById('ucTabs').innerHTML = "";
     document.getElementById('deptTableBody').innerHTML = "";
-    document.getElementById('courseTableBody').innerHTML = "";
     document.getElementById('manageTableBody').innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px">No entries yet.</td></tr>`;
     const ucKpi = document.getElementById('ucKpiStrip'); if(ucKpi) ucKpi.innerHTML = "";
     document.getElementById('sessionGrid').innerHTML = "";
@@ -1287,10 +1265,10 @@ function renderLeaders(campusList){
 function renderPodium(reporting, notReporting){
   const podium = document.getElementById('podium');
   podium.innerHTML = "";
-  const top3 = reporting.slice(0,3);
-  const arranged = [top3[1], top3[0], top3[2]].filter(Boolean);
+  const top4 = reporting.slice(0,4);
+  const arranged = [top4[1], top4[0], top4[2], top4[3]].filter(Boolean);
   arranged.forEach(c=>{
-    const rClass = c.rank===1?"r1":c.rank===2?"r2":"r3";
+    const rClass = c.rank===1?"r1":c.rank===2?"r2":c.rank===3?"r3":"r4";
     const div = document.createElement('div');
     div.className = "podium-block "+rClass;
     div.innerHTML = `
@@ -1388,8 +1366,9 @@ function renderDeptTable(campusFilter){
 }
 
 function renderCourseTable(){
-  const courses = aggregateCourses(rawData, selectedMonth, activeCourseFilter);
   const body = document.getElementById('courseTableBody');
+  if(!body) return;
+  const courses = aggregateCourses(rawData, selectedMonth, activeCourseFilter);
   body.innerHTML = courses.map((c,i)=>{
     const rank = i+1;
     return `<tr>
@@ -1437,12 +1416,16 @@ function renderManageTable(campusFilter){
   const rankMap = {};
   rankRows.forEach((rr,i)=>{ rankMap[rr.campus+"|||"+rr.department] = i+1; });
   const body = document.getElementById('manageTableBody');
-  body.innerHTML = rows.map(r=>`
+  body.innerHTML = rows.map(r=>{
+    const growthTxt = r.growth==null ? "—" : (r.growth>0?`▲ +${fmt(r.growth)}`:(r.growth<0?`▼ ${fmt(Math.abs(r.growth))}`:"– 0"));
+    const growthClass = r.growth==null?"growth-flat":(r.growth>0?"growth-up":(r.growth<0?"growth-down":"growth-flat"));
+    return `
     <tr>
       <td>${r.campus}</td>
       <td class="name-cell"><b>${r.department}</b></td>
       <td class="num-cell">${fmt(parseConn(r.connections))}</td>
       <td class="num-cell">${fmt(r.followers)}</td>
+      <td class="num-cell ${growthClass}">${growthTxt}</td>
       <td class="num-cell">${r.posts===null||r.posts===undefined?'–':fmt(r.posts)}</td>
       <td class="num-cell"><span class="rank-num ${medalClass(rankMap[r.campus+"|||"+r.department])}">${rankMap[r.campus+"|||"+r.department]||'–'}</span></td>
       <td>${r.updatedBy||'—'}${r.feedback?' <span title="'+escAttr(r.feedback)+'" style="cursor:help">💬</span>':''}</td>
@@ -1450,7 +1433,8 @@ function renderManageTable(campusFilter){
         <button class="icon-btn" title="Edit" data-action="edit" data-month="${r.month}" data-campus="${encodeURIComponent(r.campus)}" data-dept="${encodeURIComponent(r.department)}">✎</button>
         <button class="icon-btn danger" title="Delete" data-action="delete" data-month="${r.month}" data-campus="${encodeURIComponent(r.campus)}" data-dept="${encodeURIComponent(r.department)}">🗑</button>
       </td>
-    </tr>`).join("") || `<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px">No entries match this campus / search / month.</td></tr>`;
+    </tr>`;
+  }).join("") || `<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:20px">No entries match this campus / search / month.</td></tr>`;
 
   const kpiEl = document.getElementById('ucKpiStrip');
   if(kpiEl){
@@ -1524,14 +1508,18 @@ document.getElementById('manageTableBody').addEventListener('click', function(e)
 
 function populateCourseCampusFilter(campusList){
   const sel = document.getElementById('courseCampusFilter');
+  if(!sel) return;
   if(!activeCourseFilter || (activeCourseFilter!=="All" && !campusList.includes(activeCourseFilter))) activeCourseFilter = "All";
   sel.innerHTML = `<option value="All">All Campuses</option>` + campusList.map(c=>`<option value="${c}" ${c===activeCourseFilter?'selected':''}>${c}</option>`).join("");
   sel.value = activeCourseFilter;
 }
-document.getElementById('courseCampusFilter').addEventListener('change', function(){
-  activeCourseFilter = this.value;
-  renderCourseTable();
-});
+const courseCampusFilterEl = document.getElementById('courseCampusFilter');
+if(courseCampusFilterEl){
+  courseCampusFilterEl.addEventListener('change', function(){
+    activeCourseFilter = this.value;
+    renderCourseTable();
+  });
+}
 
 /* ================= excel export (campus-wise + full dataset) ================= */
 
@@ -2198,18 +2186,6 @@ document.getElementById('fileInput').addEventListener('change', function(e){
     }
   };
   reader.readAsArrayBuffer(file);
-});
-
-/* ================= reset ================= */
-document.getElementById('resetLink').addEventListener('click', async ()=>{
-  if(!confirm("This replaces the shared dataset for EVERYONE with the original demo snapshot. Continue?")) return;
-  if(!confirm("Are you absolutely sure? Any real numbers entered so far will be lost.")) return;
-  rawData = JSON.parse(document.getElementById('seed-data').textContent);
-  recomputeGrowth(rawData);
-  selectedMonth = null;
-  const ok = await persist("Reset to demo snapshot");
-  renderAll();
-  showToast(ok ? "Restored the original demo snapshot." : "Reset locally (not connected to shared storage).");
 });
 
 /* ================= init ================= */
