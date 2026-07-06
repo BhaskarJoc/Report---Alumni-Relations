@@ -948,7 +948,7 @@ function updateLivePill(meta){
   if(!storageAvailable){
     el.textContent = "Local preview — not saved for others";
     if(dot) dot.style.background = "#C7CDD8";
-    footerEl.textContent = "Open this as a live artifact in Claude to enable shared saving.";
+
     return;
   }
   if(dot) dot.style.background = "";
