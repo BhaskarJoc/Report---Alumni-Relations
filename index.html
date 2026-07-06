@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GEHU Alumni · LinkedIn Report Center</title>
+<title>GEHU Alumni · LinkedIn Command Center</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700;9..144,900&family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -432,6 +432,7 @@ body.pdf-export-mode .month-bar select{display:none;}
     <div class="hero-head">
       <div>
         <h1 class="hero-title">Who's leading the<br><em>alumni network</em> this month.</h1>
+        <p class="hero-sub">Every campus, department and course, ranked by LinkedIn followers, connections and posting activity — SPOCs update it directly and everyone sees the same numbers instantly.</p>
       </div>
     </div>
 
@@ -564,6 +565,7 @@ body.pdf-export-mode .month-bar select{display:none;}
       <div>
         <p class="eyebrow" id="campusPageEyebrow">Campus page</p>
         <h1 class="hero-title" id="campusPageTitle">—</h1>
+        <p class="hero-sub">This campus's numbers only — same live shared dataset as the Consolidated Report, filtered down to this campus so the local SPOC team can track their own progress.</p>
       </div>
       <button class="btn btn-gold" id="campusAddEntryBtn">+ Add / Update Entry</button>
     </div>
@@ -1017,19 +1019,52 @@ function allMonths(data){
 
 /* ================= aggregation ================= */
 
-function aggregateCampuses(data, month, campusList){
+function aggregateCampuses(data, month, campusList, prevMonth){
   return campusList.map(campus=>{
     const rows = data.filter(r=>r.campus===campus && r.month===month);
     const followers = rows.reduce((s,r)=>s+(r.followers||0),0);
     const connections = rows.reduce((s,r)=>s+parseConn(r.connections),0);
     const posts = rows.reduce((s,r)=>s+(r.posts||0),0);
-    return {campus, deptCount: rows.length, followers, connections, posts, reporting: rows.length>0};
+    const sessions = rows.reduce((s,r)=>s+((r.sessions||[]).length),0);
+    let connGrowth = null;
+    if(prevMonth){
+      const prevRows = data.filter(r=>r.campus===campus && r.month===prevMonth);
+      const prevConnections = prevRows.reduce((s,r)=>s+parseConn(r.connections),0);
+      connGrowth = connections - prevConnections;
+    }
+    return {campus, deptCount: rows.length, followers, connections, connGrowth, posts, sessions, reporting: rows.length>0};
   });
 }
 
 function rankByFollowers(list){
   const reporting = list.filter(x=>x.reporting).sort((a,b)=>b.followers-a.followers);
   const notReporting = list.filter(x=>!x.reporting);
+  reporting.forEach((x,i)=>x.rank=i+1);
+  return {reporting, notReporting};
+}
+
+/* Overall campus ranking = an equally-weighted blend of:
+   followers, posts, connections gained this month, and alumni sessions run.
+   Each metric is scaled against the best campus in that metric (0–1) so no
+   single metric — e.g. raw follower count — dominates the others just
+   because it happens to be a bigger number. */
+function rankByComposite(list){
+  const reporting = list.filter(x=>x.reporting);
+  const notReporting = list.filter(x=>!x.reporting);
+  const maxFollowers = Math.max(0, ...reporting.map(x=>x.followers||0));
+  const maxPosts = Math.max(0, ...reporting.map(x=>x.posts||0));
+  const maxSessions = Math.max(0, ...reporting.map(x=>x.sessions||0));
+  const connGrowthVals = reporting.map(x=>x.connGrowth).filter(v=>v!=null);
+  const maxConnGrowth = connGrowthVals.length ? Math.max(0, ...connGrowthVals) : 0;
+
+  reporting.forEach(x=>{
+    const nFollowers = maxFollowers>0 ? (x.followers||0)/maxFollowers : 0;
+    const nPosts = maxPosts>0 ? (x.posts||0)/maxPosts : 0;
+    const nSessions = maxSessions>0 ? (x.sessions||0)/maxSessions : 0;
+    const nConnGrowth = (maxConnGrowth>0 && x.connGrowth!=null) ? (x.connGrowth/maxConnGrowth) : 0;
+    x.score = (nFollowers*0.25) + (nPosts*0.25) + (nConnGrowth*0.25) + (nSessions*0.25);
+  });
+  reporting.sort((a,b)=>b.score-a.score);
   reporting.forEach((x,i)=>x.rank=i+1);
   return {reporting, notReporting};
 }
@@ -1315,8 +1350,11 @@ function renderAll(){
   }
   emptyState.innerHTML = "";
 
-  const campusAgg = aggregateCampuses(rawData, selectedMonth, campusList);
-  const {reporting, notReporting} = rankByFollowers(campusAgg);
+  const monthsForRank = allMonths(rawData);
+  const rankIdx = monthsForRank.indexOf(selectedMonth);
+  const prevMonthForRank = rankIdx>0 ? monthsForRank[rankIdx-1] : null;
+  const campusAgg = aggregateCampuses(rawData, selectedMonth, campusList, prevMonthForRank);
+  const {reporting, notReporting} = rankByComposite(campusAgg);
 
   renderPodium(reporting, notReporting);
   renderRankStrip(reporting, notReporting);
@@ -1423,7 +1461,7 @@ function renderPodium(reporting, notReporting){
   const podium = document.getElementById('podium');
   podium.innerHTML = "";
   const top4 = reporting.slice(0,4);
-  const arranged = [top4[1], top4[0], top4[2], top4[3]].filter(Boolean);
+  const arranged = top4.filter(Boolean);
   arranged.forEach(c=>{
     const rClass = c.rank===1?"r1":c.rank===2?"r2":c.rank===3?"r3":"r4";
     const div = document.createElement('div');
@@ -1749,11 +1787,16 @@ document.getElementById('campusExportBtn').addEventListener('click', function(){
       XLSX.utils.book_append_sheet(wb, ws, safeSheetName(c));
     });
     if(!anySheet){ alert("No data to export yet."); return; }
-    const campusAgg = aggregateCampuses(rawData, selectedMonth, campusList);
-    const {reporting, notReporting} = rankByFollowers(campusAgg);
+    const monthsForExportRank = allMonths(rawData);
+    const exportRankIdx = monthsForExportRank.indexOf(selectedMonth);
+    const prevMonthForExportRank = exportRankIdx>0 ? monthsForExportRank[exportRankIdx-1] : null;
+    const campusAgg = aggregateCampuses(rawData, selectedMonth, campusList, prevMonthForExportRank);
+    const {reporting, notReporting} = rankByComposite(campusAgg);
     const summaryRows = [...reporting, ...notReporting].map(c=>({
       "Rank": c.rank||"—", "Campus": c.campus, "Departments Reporting": c.deptCount,
       "Posts": c.posts, "Followers": c.followers, "Connections": c.connections,
+      "Connections Gained (vs prior month)": c.connGrowth==null?"—":c.connGrowth,
+      "Alumni Sessions": c.sessions||0,
       "Status": c.reporting?"Submitted":"No data"
     }));
     const wsSummary = XLSX.utils.json_to_sheet(summaryRows);
