@@ -1,0 +1,2256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GEHU Alumni · LinkedIn Command Center</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700;9..144,900&family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --ink:#12182B;
+  --paper:#EAEEF5;
+  --panel:#FFFFFF;
+  --gold:#C8932B;
+  --silver:#8B98A9;
+  --bronze:#B0703F;
+  --teal:#2F6F5E;
+  --teal-soft:#E4F0EC;
+  --brick:#B23A48;
+  --brick-soft:#F8E7E8;
+  --amber-soft:#FBF0DE;
+  --muted:#5B6472;
+  --line:#D8DEE7;
+  --radius:14px;
+}
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:'Inter',sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+.mono{font-family:'IBM Plex Mono',monospace;}
+.display{font-family:'Fraunces',serif;}
+
+/* ---------- Loading overlay ---------- */
+.loading-overlay{position:fixed; inset:0; background:var(--paper); z-index:300; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; transition:opacity .3s ease;}
+.loading-overlay.hide{opacity:0; pointer-events:none;}
+.spinner{width:30px; height:30px; border:3px solid var(--line); border-top-color:var(--teal); border-radius:50%; animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading-overlay p{font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:var(--muted); letter-spacing:.04em;}
+
+/* ---------- Top bar ---------- */
+.topbar{
+  position:sticky; top:0; z-index:50;
+  background:var(--ink);
+  color:#EDEFF4;
+  padding:14px 28px;
+  display:flex; align-items:center; justify-content:space-between; gap:16px;
+  flex-wrap:wrap;
+}
+.brand{display:flex; align-items:center; gap:10px;}
+.brand .mark{
+  width:34px; height:34px; border-radius:8px;
+  background:linear-gradient(135deg,var(--gold),var(--bronze));
+  display:flex; align-items:center; justify-content:center;
+  font-family:'Fraunces',serif; font-weight:700; color:var(--ink); font-size:16px;
+}
+.brand .name{font-size:14px; letter-spacing:.06em; text-transform:uppercase; font-weight:600;}
+.brand .name span{display:block; font-size:11px; color:#9AA3B5; letter-spacing:.08em; font-weight:500;}
+.topbar-actions{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+.pill{
+  font-size:11.5px; padding:6px 12px; border-radius:999px;
+  background:rgba(255,255,255,.08); color:#D8DEEA; letter-spacing:.02em;
+  border:1px solid rgba(255,255,255,.12);
+  display:inline-flex; align-items:center; gap:7px;
+}
+.live-dot{width:7px; height:7px; border-radius:50%; background:#3ECF8E; flex-shrink:0; animation:pulse 2s infinite;}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(62,207,142,.55);}70%{box-shadow:0 0 0 6px rgba(62,207,142,0);}100%{box-shadow:0 0 0 0 rgba(62,207,142,0);}}
+.btn{
+  font-family:'Inter',sans-serif; font-weight:600; font-size:13px;
+  border:none; border-radius:9px; padding:9px 16px; cursor:pointer;
+  display:inline-flex; align-items:center; gap:7px; transition:transform .12s ease, box-shadow .12s ease;
+}
+.btn:active{transform:translateY(1px);}
+.btn-gold{background:var(--gold); color:var(--ink);}
+.btn-gold:hover{box-shadow:0 4px 14px rgba(200,147,43,.4);}
+.btn-ghost{background:rgba(255,255,255,.08); color:#EDEFF4; border:1px solid rgba(255,255,255,.16);}
+.btn-ghost:hover{background:rgba(255,255,255,.14);}
+.btn-outline{background:#fff; color:var(--ink); border:1px solid var(--line);}
+.btn-outline:hover{background:#F4F6FA;}
+input[type=file]{display:none;}
+
+/* ---------- Layout ---------- */
+.wrap{max-width:1180px; margin:0 auto; padding:0 28px;}
+section{padding:48px 0;}
+section.tight{padding-top:0;}
+.section-head{margin-bottom:24px; display:flex; justify-content:space-between; align-items:flex-end; gap:20px; flex-wrap:wrap;}
+.eyebrow{
+  font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--teal); font-weight:600; margin:0 0 6px;
+}
+h2.section-title{
+  font-family:'Fraunces',serif; font-weight:600; font-size:28px; margin:0;
+  letter-spacing:-.01em;
+}
+p.section-sub{color:var(--muted); font-size:14.5px; margin:8px 0 0; max-width:640px;}
+
+/* ---------- Hero / Podium ---------- */
+.hero{padding-top:56px; padding-bottom:20px;}
+.hero-head{display:flex; justify-content:space-between; align-items:flex-end; gap:24px; flex-wrap:wrap; margin-bottom:28px;}
+.hero-title{font-family:'Fraunces',serif; font-weight:700; font-size:44px; line-height:1.05; margin:0; letter-spacing:-.01em;}
+.hero-title em{font-style:normal; color:var(--teal);}
+.hero-sub{color:var(--muted); font-size:15px; margin-top:10px; max-width:520px;}
+
+.month-bar{display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:28px; background:var(--panel); border-radius:12px; padding:12px 16px; box-shadow:0 1px 2px rgba(18,24,43,.06);}
+.month-bar label{font-size:11.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); font-weight:600;}
+select.month-select{
+  font-family:'IBM Plex Mono',monospace; font-size:14px; font-weight:600; color:var(--ink);
+  border:1px solid var(--line); border-radius:8px; padding:7px 10px; background:#fff; cursor:pointer;
+}
+.month-latest-note{font-size:12px; color:var(--muted); margin-left:auto;}
+.month-latest-note b{color:var(--teal);}
+
+.podium{display:flex; align-items:flex-end; gap:18px; justify-content:center; padding:10px 0 8px;}
+.podium-block{
+  flex:1; max-width:280px; background:var(--panel); border-radius:var(--radius) var(--radius) 6px 6px;
+  padding:22px 20px 18px; text-align:center; position:relative;
+  box-shadow:0 1px 2px rgba(18,24,43,.06);
+  transform:translateY(20px); opacity:0;
+  animation:rise .6s ease forwards;
+  border-top:5px solid var(--line);
+}
+.podium-block.r1{padding-top:32px; border-top-color:var(--gold);}
+.podium-block.r2{border-top-color:var(--silver);}
+.podium-block.r3{border-top-color:var(--bronze);}
+.podium-block.r1{animation-delay:.05s;}
+.podium-block.r2{animation-delay:.18s;}
+.podium-block.r3{animation-delay:.3s;}
+@keyframes rise{to{transform:translateY(0); opacity:1;}}
+.rank-badge{
+  font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:12px;
+  display:inline-flex; align-items:center; justify-content:center;
+  width:28px; height:28px; border-radius:50%; margin-bottom:10px;
+  color:#fff;
+}
+.r1 .rank-badge{background:var(--gold);}
+.r2 .rank-badge{background:var(--silver);}
+.r3 .rank-badge{background:var(--bronze);}
+.podium-campus{font-weight:700; font-size:15px; margin:0 0 4px;}
+.podium-stat{font-family:'Fraunces',serif; font-weight:700; font-size:32px; color:var(--ink); margin:6px 0 2px;}
+.podium-label{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em;}
+.podium-meta{margin-top:10px; font-size:12px; color:var(--muted); display:flex; justify-content:center; gap:10px;}
+.no-report-row{
+  margin-top:18px; display:flex; align-items:center; justify-content:space-between;
+  background:var(--brick-soft); border:1px solid #EFC9CC; color:var(--brick);
+  border-radius:10px; padding:10px 16px; font-size:13px; gap:12px; flex-wrap:wrap;
+}
+.no-report-row b{color:var(--brick);}
+.empty-state{padding:40px 20px; text-align:center; color:var(--muted); font-size:14px; background:var(--panel); border-radius:var(--radius);}
+.chart-empty-note{display:none; min-height:180px; box-shadow:none; padding:24px; margin:0;}
+
+/* ---------- Quick nav ---------- */
+.quicknav{display:flex; gap:6px; flex-wrap:wrap; padding:14px 28px 0; max-width:1180px; margin:0 auto;}
+.quicknav a{font-size:12px; font-weight:600; color:var(--muted); text-decoration:none; padding:6px 13px; border-radius:999px; background:var(--panel); border:1px solid var(--line); white-space:nowrap;}
+.quicknav a:hover{color:var(--ink); border-color:var(--ink); background:#F4F6FA;}
+
+/* ---------- Page nav (Consolidated + per-campus pages) ---------- */
+.pagenav-wrap{background:#fff; border-bottom:1px solid var(--line); position:sticky; top:62px; z-index:40;}
+.pagenav{display:flex; gap:8px; flex-wrap:wrap; max-width:1180px; margin:0 auto; padding:12px 28px;}
+.pagenav button{font-family:'Inter',sans-serif; font-size:12.5px; font-weight:700; padding:8px 16px; border-radius:999px; border:1px solid var(--line); background:var(--paper); color:var(--muted); cursor:pointer; white-space:nowrap;}
+.pagenav button.active{background:var(--ink); color:#fff; border-color:var(--ink);}
+.pagenav button:hover:not(.active){border-color:var(--ink); color:var(--ink);}
+@media print{.pagenav-wrap{display:none !important;}}
+body.pdf-export-mode .pagenav-wrap{display:none !important;}
+
+/* ---------- Full rank strip ---------- */
+.rank-strip{display:flex; gap:10px; flex-wrap:wrap; margin-top:16px;}
+.rank-strip .rank-strip-label{width:100%; font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); font-weight:600; margin:0 0 2px;}
+.rank-chip{display:flex; align-items:center; gap:9px; background:var(--panel); border-radius:999px; padding:6px 16px 6px 6px; box-shadow:0 1px 2px rgba(18,24,43,.06); font-size:12.5px;}
+.rank-chip .num{width:23px; height:23px; border-radius:50%; background:#EEF1F6; color:var(--muted); display:inline-flex; align-items:center; justify-content:center; font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:11px; flex-shrink:0;}
+.rank-chip.gold .num{background:var(--gold); color:#fff;}
+.rank-chip.silver .num{background:var(--silver); color:#fff;}
+.rank-chip.bronze .num{background:var(--bronze); color:#fff;}
+.rank-chip b{font-weight:600;}
+.rank-chip span.f{color:var(--muted); font-family:'IBM Plex Mono',monospace; font-size:11.5px;}
+.rank-chip.dim{opacity:.55;}
+
+/* ---------- Department leaders ---------- */
+.leader-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px;}
+.leader-card{background:var(--panel); border-radius:var(--radius); padding:18px 20px; box-shadow:0 1px 2px rgba(18,24,43,.06); border-left:4px solid var(--teal);}
+.leader-card .campus-name{font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin:0 0 8px; font-weight:600;}
+.leader-card .dept-name{font-family:'Fraunces',serif; font-weight:700; font-size:16.5px; margin:0 0 10px; line-height:1.25;}
+.leader-card .stat-row{display:flex; justify-content:space-between; align-items:center; font-size:12px; color:var(--muted); padding:3px 0;}
+.leader-card .stat-row b{color:var(--ink); font-family:'IBM Plex Mono',monospace; font-weight:600;}
+
+/* ---------- Export toolbar ---------- */
+.export-toolbar{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:16px;}
+.export-toolbar label{font-size:11.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); font-weight:600;}
+.export-toolbar select{font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:600; color:var(--ink); border:1px solid var(--line); border-radius:8px; padding:7px 10px; background:#fff; cursor:pointer;}
+.section-toolbar{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:16px; justify-content:space-between;}
+
+/* ---------- KPI strip ---------- */
+.kpi-strip{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-top:36px;}
+.kpi-card{background:var(--panel); border-radius:var(--radius); padding:18px 20px; box-shadow:0 1px 2px rgba(18,24,43,.06);}
+.kpi-label{font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin:0 0 8px;}
+.kpi-value{font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:26px; color:var(--ink);}
+
+/* ---------- Cards / panels ---------- */
+.panel{background:var(--panel); border-radius:var(--radius); box-shadow:0 1px 2px rgba(18,24,43,.06); padding:22px;}
+.grid-2{display:grid; grid-template-columns:1.15fr .85fr; gap:20px;}
+.grid-2b{display:grid; grid-template-columns:.85fr 1.15fr; gap:20px;}
+.report-stack{display:flex; flex-direction:column; gap:28px;}
+.report-stack-label{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); font-weight:600; margin:0 0 8px;}
+
+/* ---------- Ranking table ---------- */
+.table-scroll{overflow-x:auto;}
+table{width:100%; border-collapse:collapse; font-size:13.5px;}
+th{
+  text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted);
+  padding:0 10px 10px; border-bottom:1px solid var(--line); font-weight:600; white-space:nowrap;
+}
+td{padding:11px 10px; border-bottom:1px solid #EEF1F6; vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+.rank-num{
+  font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:13px;
+  width:26px; height:26px; border-radius:7px; display:inline-flex; align-items:center; justify-content:center;
+  background:#EEF1F6; color:var(--muted);
+}
+.rank-num.gold{background:var(--gold); color:#fff;}
+.rank-num.silver{background:var(--silver); color:#fff;}
+.rank-num.bronze{background:var(--bronze); color:#fff;}
+.name-cell b{display:block; font-size:13.5px;}
+.name-cell span{font-size:11.5px; color:var(--muted);}
+.num-cell{font-family:'IBM Plex Mono',monospace; text-align:right; white-space:nowrap;}
+.status-pill{
+  display:inline-block; font-size:11px; font-weight:600; padding:4px 10px; border-radius:999px; letter-spacing:.01em; white-space:nowrap;
+}
+.status-Green{background:var(--teal-soft); color:var(--teal);}
+.status-Amber{background:var(--amber-soft); color:#9C6500;}
+.status-Red{background:var(--brick-soft); color:var(--brick);}
+.status-NoPage{background:#EEF0F3; color:var(--muted);}
+.status-Pending{background:#EEF0F3; color:var(--muted);}
+.growth-up{color:var(--teal); font-weight:600;}
+.growth-down{color:var(--brick); font-weight:600;}
+.growth-flat{color:var(--muted);}
+
+/* ---------- Tabs ---------- */
+.tabs{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px;}
+.tab{
+  font-family:'Inter',sans-serif; font-size:12.5px; font-weight:600; padding:8px 14px; border-radius:999px;
+  border:1px solid var(--line); background:var(--panel); color:var(--muted); cursor:pointer;
+}
+.tab.active{background:var(--ink); color:#fff; border-color:var(--ink);}
+
+/* ---------- Chart wrap ---------- */
+.chart-wrap{position:relative;}
+.legend-row{display:flex; gap:16px; flex-wrap:wrap; margin-top:14px; font-size:12px; color:var(--muted);}
+.legend-dot{display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px;}
+
+/* ---------- Update Center ---------- */
+.uc-note{font-size:12.5px; color:var(--muted); margin:0 0 16px; display:flex; align-items:center; gap:8px;}
+.uc-note .live-dot{position:relative; top:0;}
+.icon-btn{border:none; background:#EEF1F6; border-radius:7px; width:28px; height:28px; cursor:pointer; font-size:13px; color:var(--muted); margin-right:5px;}
+.icon-btn:hover{background:var(--line);}
+.icon-btn.danger:hover{background:var(--brick-soft); color:var(--brick);}
+
+/* ---------- Entry overlay / form ---------- */
+.entry-overlay{position:fixed; inset:0; background:rgba(18,24,43,.52); display:none; align-items:center; justify-content:center; z-index:120; padding:20px;}
+.entry-overlay.open{display:flex;}
+.entry-panel{background:#fff; border-radius:16px; max-width:640px; width:100%; max-height:88vh; overflow:auto; padding:26px 28px;}
+.entry-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;}
+.entry-head h3{font-family:'Fraunces',serif; margin:0; font-size:21px;}
+.entry-head button{background:none; border:none; font-size:20px; cursor:pointer; color:var(--muted); line-height:1;}
+.entry-sub{font-size:12.5px; color:var(--muted); margin:0 0 20px;}
+.entry-form{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+.entry-form .full{grid-column:1/-1;}
+.entry-form label{display:flex; flex-direction:column; gap:6px; font-size:11.5px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.03em;}
+.entry-form input, .entry-form select{
+  font-family:'Inter',sans-serif; font-size:13.5px; color:var(--ink); font-weight:500; text-transform:none; letter-spacing:normal;
+  padding:9px 11px; border-radius:8px; border:1px solid var(--line); background:#fff;
+}
+.entry-form input:focus, .entry-form select:focus{outline:2px solid var(--teal); outline-offset:1px;}
+.entry-actions{grid-column:1/-1; display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:8px; border-top:1px solid var(--line); padding-top:16px;}
+
+/* ---------- Toast ---------- */
+.toast{position:fixed; bottom:26px; left:50%; transform:translateX(-50%) translateY(16px); background:var(--ink); color:#fff; padding:12px 20px; border-radius:10px; font-size:13.5px; opacity:0; pointer-events:none; transition:all .25s ease; z-index:200; max-width:88vw; text-align:center;}
+.toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+footer{
+  padding:34px 0 60px; text-align:center; color:var(--muted); font-size:12.5px;
+}
+footer b{color:var(--ink);}
+footer .reset-link{background:none; border:none; color:var(--muted); text-decoration:underline; cursor:pointer; font-size:11.5px; font-family:'Inter',sans-serif;}
+
+@media (max-width:860px){
+  .kpi-strip{grid-template-columns:repeat(2,1fr);}
+  .grid-2, .grid-2b{grid-template-columns:1fr;}
+  .podium{flex-direction:column; align-items:stretch;}
+  .podium-block{max-width:none;}
+  .hero-title{font-size:32px;}
+  .entry-form{grid-template-columns:1fr;}
+  .month-latest-note{margin-left:0;}
+}
+
+/* ---------- Print ---------- */
+@media print{
+  .topbar .btn, .topbar input, #uploadBtn, #printBtn, #downloadAllExcelBtn, .entry-overlay, .toast, .month-bar select, .icon-btn, .quicknav, .export-toolbar{display:none !important;}
+  body{background:#fff;}
+  section{padding:18px 0; break-inside:avoid;}
+  .panel, .kpi-card, .podium-block{box-shadow:none; border:1px solid #ddd;}
+  .topbar{position:static; background:#fff; color:var(--ink); border-bottom:2px solid var(--ink);}
+  .pill{border-color:var(--ink); color:var(--ink);}
+  canvas{max-height:260px !important;}
+}
+
+.uc-toolbar{display:flex; gap:10px; align-items:center; margin-bottom:14px; flex-wrap:wrap;}
+.uc-toolbar input{font-family:'Inter',sans-serif; font-size:13px; padding:8px 12px; border-radius:8px; border:1px solid var(--line); min-width:240px; flex:1;}
+.uc-toolbar input:focus{outline:2px solid var(--teal); outline-offset:1px;}
+.btn-sm{padding:8px 12px; font-size:12px;}
+.year-growth-pill{font-size:12px; color:var(--muted); display:inline-flex; align-items:center; gap:6px;}
+.year-growth-pill b{color:var(--teal); font-family:'IBM Plex Mono',monospace;}
+.year-growth-pill b.down{color:var(--brick);}
+
+/* ---------- Alumni Sessions (Add/Update entry) ---------- */
+.session-block{grid-column:1/-1; border-top:1px solid var(--line); padding-top:14px; margin-top:2px;}
+.session-block-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;}
+.session-block-head label{margin:0;}
+.session-count-badge{color:var(--teal); font-weight:700;}
+.session-block-hint{font-size:12px; color:var(--muted); margin:2px 0 10px; text-transform:none; font-weight:400; letter-spacing:normal;}
+.btn-mini{font-family:'Inter',sans-serif; font-size:11.5px; font-weight:700; padding:7px 13px; border-radius:7px; border:1px solid var(--line); background:#fff; color:var(--ink); cursor:pointer;}
+.btn-mini:hover{background:#F4F6FA;}
+.session-row{border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:10px; background:#FBFCFE;}
+.session-row-top{display:flex; align-items:center; gap:9px; margin-bottom:9px;}
+.session-photo-preview{width:38px; height:38px; border-radius:8px; object-fit:cover; background:#EEF1F6; border:1px solid var(--line); flex-shrink:0;}
+.btn-mini-upload{font-size:11px; font-weight:600; padding:6px 10px; border-radius:6px; background:#EEF1F6; cursor:pointer; color:var(--muted); text-transform:none; letter-spacing:normal;}
+.btn-mini-upload input{display:none;}
+.session-remove-btn{margin-left:auto; background:none; border:none; color:var(--brick); cursor:pointer; font-size:12px; font-weight:600;}
+.session-fields{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+.session-fields input{font-family:'Inter',sans-serif; font-size:12.5px; font-weight:500; padding:8px 9px; border-radius:7px; border:1px solid var(--line); background:#fff; text-transform:none; letter-spacing:normal;}
+.session-empty-note{font-size:12px; color:var(--muted); margin:2px 0 0;}
+
+/* ---------- Session gallery section on dashboard ---------- */
+.session-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:14px;}
+.session-card{background:var(--panel); border-radius:var(--radius); box-shadow:0 1px 2px rgba(18,24,43,.06); padding:16px; display:flex; gap:12px;}
+.session-card img{width:52px; height:52px; border-radius:10px; object-fit:cover; background:#EEF1F6; border:1px solid var(--line); flex-shrink:0;}
+.session-card .who b{display:block; font-size:14px; font-family:'Fraunces',serif; font-weight:600;}
+.session-card .who span{font-size:11.5px; color:var(--muted); display:block; margin-top:1px;}
+.session-card .who .topic{font-size:12px; color:var(--ink); margin-top:6px; line-height:1.35;}
+.session-card .who .meta{font-size:10.5px; color:var(--muted); margin-top:6px; text-transform:uppercase; letter-spacing:.03em;}
+
+/* ---------- PDF export capture mode ---------- */
+body.pdf-export-mode .table-scroll{overflow:visible !important;}
+body.pdf-export-mode table{font-size:11px;}
+body.pdf-export-mode th, body.pdf-export-mode td{padding:6px 7px;}
+body.pdf-export-mode .wrap{max-width:1500px;}
+body.pdf-export-mode .grid-2, body.pdf-export-mode .grid-2b{grid-template-columns:1fr !important;}
+body.pdf-export-mode .export-toolbar, body.pdf-export-mode .section-toolbar, body.pdf-export-mode .icon-btn, body.pdf-export-mode .quicknav, body.pdf-export-mode .uc-toolbar{display:none !important;}
+body.pdf-export-mode .month-bar select{display:none;}
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <p>LOADING SHARED TRACKER DATA…</p>
+</div>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="mark">GE</div>
+    <div class="name">GEHU Alumni Relations<span>LinkedIn Command Center</span></div>
+  </div>
+  <div class="topbar-actions">
+    <span class="pill" id="livePill"><span class="live-dot"></span><span id="livePillText">Shared live dataset</span></span>
+    <button class="btn btn-gold" id="addEntryBtn">+ Add / Update Entry</button>
+    <label class="btn btn-ghost" id="uploadBtn">⭱ Import Excel<input type="file" id="fileInput" accept=".xlsx"></label>
+    <button class="btn btn-ghost" id="downloadAllExcelBtn">⬇ Download All Data (Excel)</button>
+    <button class="btn btn-ghost" id="printBtn">⬇ Download Report (PDF)</button>
+  </div>
+</div>
+
+<div class="quicknav">
+  <a href="#sec-update">Update Center</a>
+  <a href="#sec-sessions">Alumni Sessions</a>
+  <a href="#sec-campus">Campus Ranking</a>
+  <a href="#sec-leaders">Department Leaders</a>
+  <a href="#sec-dept">Department Ranking</a>
+  <a href="#sec-course">Course Ranking</a>
+  <a href="#sec-trend">Trends &amp; Health</a>
+</div>
+
+<div class="pagenav-wrap">
+  <div class="pagenav" id="pageNav"></div>
+</div>
+
+<div class="wrap">
+
+<div id="page-dashboard" class="page">
+
+  <section class="hero">
+    <div class="hero-head">
+      <div>
+        <h1 class="hero-title">Who's leading the<br><em>alumni network</em> this month.</h1>
+        <p class="hero-sub">Every campus, department and course, ranked by LinkedIn followers, connections and posting activity — SPOCs update it directly and everyone sees the same numbers instantly.</p>
+      </div>
+    </div>
+
+    <div class="month-bar">
+      <label for="monthSelect">Viewing month</label>
+      <select class="month-select" id="monthSelect"></select>
+      <span class="month-latest-note" id="latestNote"></span>
+      <span class="year-growth-pill" id="yearGrowthPill"></span>
+    </div>
+
+    <div class="podium" id="podium"></div>
+    <div class="rank-strip" id="rankStrip"></div>
+    <div id="noReportArea"></div>
+    <div id="emptyState"></div>
+
+    <div class="kpi-strip" id="kpiStrip"></div>
+  </section>
+
+  <section class="uc-section" id="sec-update">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">00 — Update Center</p>
+        <h2 class="section-title">This month's submissions</h2>
+        <p class="section-sub">Every entry currently on record for the selected month. Switch between a campus tab or the Consolidated view, add a new entry, fix a number, or remove a duplicate — changes save to the shared dataset immediately.</p>
+      </div>
+    </div>
+    <div class="panel">
+      <p class="uc-note"><span class="live-dot"></span> Visible to everyone who opens this page — there's no separate draft or approval step.</p>
+      <div class="tabs" id="ucTabs"></div>
+      <div class="uc-toolbar">
+        <input type="text" id="ucSearch" placeholder="Search department or campus…">
+        <button class="btn btn-outline btn-sm" id="ucExportBtn">⬇ Export this view</button>
+      </div>
+      <div class="kpi-strip" id="ucKpiStrip" style="margin-top:0; margin-bottom:16px"></div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Campus</th><th>Department</th><th style="text-align:right">Connections</th><th style="text-align:right">Followers</th><th style="text-align:right">Posts</th><th style="text-align:right">Rank</th><th>Updated by</th><th></th></tr></thead>
+          <tbody id="manageTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="sec-feedback">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">00c — Feedback &amp; Suggestions</p>
+        <h2 class="section-title">Feedback from campuses &amp; departments</h2>
+        <p class="section-sub">Notes submitted alongside monthly entries, across all months — newest first. Not filtered by the month selector above, so nothing gets missed.</p>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th style="width:110px">Month</th><th>Campus</th><th>Department</th><th>Feedback / Suggestion</th><th>Submitted by</th></tr></thead>
+          <tbody id="feedbackTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="sec-sessions">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">00b — Alumni Sessions</p>
+        <h2 class="section-title">Alumni sessions planned this month</h2>
+        <p class="section-sub" id="sessionsSectionSub">Every alumni session logged against a department for the selected month — speaker, course, campus, and photo.</p>
+      </div>
+    </div>
+    <div class="session-grid" id="sessionGrid"></div>
+  </section>
+
+  <section id="sec-campus">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">01 — Campus Ranking</p>
+        <h2 class="section-title">Campus leaderboard</h2>
+        <p class="section-sub">Ranked by total LinkedIn followers across all reporting departments in the selected month. All campuses are shown, reporting or not.</p>
+      </div>
+    </div>
+    <div class="panel export-toolbar">
+      <label for="campusExportSelect">Download campus data</label>
+      <select id="campusExportSelect"></select>
+      <button class="btn btn-outline" id="campusExportBtn">⬇ Download Excel</button>
+    </div>
+    <div class="panel table-scroll">
+      <table>
+        <thead><tr><th>#</th><th>Campus</th><th style="text-align:right">Depts</th><th style="text-align:right">Posts</th><th style="text-align:right">Followers</th><th style="text-align:right">Connections</th></tr></thead>
+        <tbody id="campusTableBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="sec-leaders">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">02 — Department Leaders</p>
+        <h2 class="section-title">Top department, campus by campus</h2>
+        <p class="section-sub">The single highest-performing department by followers at each campus this month.</p>
+      </div>
+    </div>
+    <div class="leader-grid" id="leaderGrid"></div>
+  </section>
+
+  <section id="sec-dept">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">03 — Department Ranking</p>
+        <h2 class="section-title">Department leaderboard</h2>
+        <p class="section-sub">Every department across all campuses, ranked by followers. Filter by campus to see local ranking.</p>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="tabs" id="deptTabs"></div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>#</th><th>Department</th><th style="text-align:right">Posts</th><th style="text-align:right">Followers</th><th style="text-align:right">Growth</th></tr></thead>
+          <tbody id="deptTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="sec-course">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">04 — Course Ranking</p>
+        <h2 class="section-title">Course &amp; program leaderboard</h2>
+        <p class="section-sub">Programs pulled from the "Programs / Courses" field, ranked by the combined followers of every department that offers them.</p>
+      </div>
+    </div>
+    <div class="panel section-toolbar">
+      <div class="export-toolbar" style="margin-bottom:0">
+        <label for="courseCampusFilter">Filter by campus</label>
+        <select id="courseCampusFilter"></select>
+      </div>
+    </div>
+    <div class="panel table-scroll">
+      <table>
+        <thead><tr><th>#</th><th>Course / Program</th><th style="text-align:right">Offered by</th><th style="text-align:right">Posts</th><th style="text-align:right">Followers</th></tr></thead>
+        <tbody id="courseTableBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+</div><!-- /page-dashboard -->
+
+<div id="page-campus" class="page" style="display:none">
+
+  <section class="hero" style="padding-top:40px">
+    <div class="hero-head">
+      <div>
+        <p class="eyebrow" id="campusPageEyebrow">Campus page</p>
+        <h1 class="hero-title" id="campusPageTitle">—</h1>
+        <p class="hero-sub">This campus's numbers only — same live shared dataset as the Consolidated Report, filtered down to this campus so the local SPOC team can track their own progress.</p>
+      </div>
+      <button class="btn btn-gold" id="campusAddEntryBtn">+ Add / Update Entry</button>
+    </div>
+    <div class="kpi-strip" id="campusKpiStrip"></div>
+  </section>
+
+  <section id="cp-sec-report">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">00 — Report Period</p>
+        <h2 class="section-title">View a custom report</h2>
+        <p class="section-sub">Pick a month and a look-back window to see how this campus moved over time. This is independent of the month picked on the Consolidated Report — the sections below always follow that one.</p>
+      </div>
+    </div>
+    <div class="panel export-toolbar">
+      <label for="campusReportMonth">Report ending month</label>
+      <select id="campusReportMonth"></select>
+      <label for="campusReportRange">Look back</label>
+      <select id="campusReportRange">
+        <option value="1">Selected month only</option>
+        <option value="2">Last 2 months</option>
+        <option value="6">Last 6 months</option>
+        <option value="12">Last 1 year</option>
+        <option value="all">All time</option>
+      </select>
+    </div>
+    <div class="kpi-strip" id="campusReportKpiStrip"></div>
+    <div class="report-stack">
+      <div>
+        <p class="report-stack-label">Department breakdown — start vs. end of period</p>
+        <div class="panel table-scroll">
+          <table>
+            <thead><tr><th>#</th><th>Department</th><th style="text-align:right">Followers (start)</th><th style="text-align:right">Followers (end)</th><th style="text-align:right">Growth</th><th style="text-align:right">Posts (period)</th><th style="text-align:right">Sessions (period)</th></tr></thead>
+            <tbody id="campusReportTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div>
+        <p class="report-stack-label">Month-by-month trend</p>
+        <div class="panel table-scroll">
+          <table>
+            <thead><tr><th>Month</th><th style="text-align:right">Total Followers</th><th style="text-align:right">Posts</th><th style="text-align:right">Sessions</th><th style="text-align:right">Growth vs prior month</th></tr></thead>
+            <tbody id="campusReportMonthlyTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="cp-sec-dept">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">01 — Department Ranking</p>
+        <h2 class="section-title">Departments at this campus</h2>
+        <p class="section-sub">Every department reporting for this campus in the selected month, ranked by followers.</p>
+      </div>
+    </div>
+    <div class="panel table-scroll">
+      <table>
+        <thead><tr><th>#</th><th>Department</th><th style="text-align:right">Connections</th><th style="text-align:right">Followers</th><th style="text-align:right">Posts</th><th style="text-align:right">Growth</th></tr></thead>
+        <tbody id="campusDeptTableBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="cp-sec-course">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">02 — Course Ranking</p>
+        <h2 class="section-title">Course &amp; program leaderboard</h2>
+        <p class="section-sub">Programs offered at this campus, ranked by combined followers of the departments that offer them.</p>
+      </div>
+    </div>
+    <div class="panel table-scroll">
+      <table>
+        <thead><tr><th>#</th><th>Course / Program</th><th style="text-align:right">Offered by</th><th style="text-align:right">Posts</th><th style="text-align:right">Followers</th></tr></thead>
+        <tbody id="campusCourseTableBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="cp-sec-sessions">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">03 — Alumni Sessions</p>
+        <h2 class="section-title">Alumni sessions at this campus</h2>
+        <p class="section-sub">Sessions logged against departments at this campus for the selected month.</p>
+      </div>
+    </div>
+    <div class="session-grid" id="campusSessionGrid"></div>
+  </section>
+
+  <section id="cp-sec-update">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">04 — Update Center</p>
+        <h2 class="section-title">This month's submissions — this campus</h2>
+        <p class="section-sub">Every entry on record for this campus this month. Edits save straight to the shared dataset.</p>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="kpi-strip" id="campusUcKpiStrip" style="margin-top:0; margin-bottom:16px"></div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Department</th><th style="text-align:right">Connections</th><th style="text-align:right">Followers</th><th style="text-align:right">Posts</th><th style="text-align:right">Rank</th><th>Updated by</th><th></th></tr></thead>
+          <tbody id="campusManageTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="cp-sec-feedback">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">05 — Feedback &amp; Suggestions</p>
+        <h2 class="section-title">Feedback from this campus</h2>
+        <p class="section-sub">Notes submitted alongside monthly entries for this campus, across all months — newest first.</p>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th style="width:110px">Month</th><th>Department</th><th>Feedback / Suggestion</th><th>Submitted by</th></tr></thead>
+          <tbody id="campusFeedbackTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+</div><!-- /page-campus -->
+
+  <footer>
+    <p>GEHU Alumni Relations · LinkedIn Command Center. <b id="footerUpdated">—</b></p>
+    <button class="reset-link" id="resetLink">Restore original demo snapshot</button>
+  </footer>
+
+</div>
+
+<!-- ---------- Entry overlay ---------- -->
+<div class="entry-overlay" id="entryOverlay">
+  <div class="entry-panel">
+    <div class="entry-head">
+      <h3 id="entryFormTitle">Add / update monthly entry</h3>
+      <button type="button" id="closeEntry" aria-label="Close">✕</button>
+    </div>
+    <p class="entry-sub">Fill in this department's numbers for the month. Growth vs. the previous month is calculated automatically.</p>
+    <form id="entryForm" class="entry-form">
+      <label class="full">Month
+        <input type="month" id="f_month" required>
+      </label>
+      <label>Campus
+        <select id="f_campus" required></select>
+      </label>
+      <label id="f_campus_other_wrap" style="display:none">New campus name
+        <input type="text" id="f_campus_other" placeholder="e.g. GEHU - Jaipur">
+      </label>
+      <label class="full">Department
+        <input type="text" id="f_dept" list="deptList" required placeholder="e.g. Computer Science">
+        <datalist id="deptList"></datalist>
+      </label>
+      <label class="full">Programs / Courses <span style="text-transform:none;font-weight:400">(comma separated)</span>
+        <input type="text" id="f_programs" placeholder="e.g. BCA, MCA">
+      </label>
+      <div class="session-block">
+        <div class="session-block-head">
+          <label>Alumni sessions planned <span class="session-count-badge mono" id="sessionCountBadge">(0)</span></label>
+          <button type="button" class="btn-mini" id="addSessionBtn">+ Add session</button>
+        </div>
+        <p class="session-block-hint">Log every alumni session this department is planning or has held this month — speaker, course, campus, and a photo.</p>
+        <div id="sessionRows"></div>
+      </div>
+      <label>Has LinkedIn page?
+        <select id="f_haspage">
+          <option value="YES">Yes</option>
+          <option value="NO">No</option>
+        </select>
+      </label>
+      <label>Activity status
+        <select id="f_status">
+          <option value="Green">Green</option>
+          <option value="Amber">Amber</option>
+          <option value="Red">Red</option>
+          <option value="No Page">No Page</option>
+          <option value="Pending">Pending</option>
+        </select>
+      </label>
+      <label class="full">LinkedIn URL
+        <input type="url" id="f_url" placeholder="https://linkedin.com/…">
+      </label>
+      <label>Direct posts (this month)
+        <input type="number" id="f_posts" min="0" step="1">
+      </label>
+      <label>Spotlight posts
+        <input type="number" id="f_spotlight" min="0" step="1">
+      </label>
+      <label>Total connections
+        <input type="text" id="f_connections" placeholder="e.g. 350 or 500+">
+      </label>
+      <label>Total followers
+        <input type="number" id="f_followers" min="0" step="1" required>
+      </label>
+      <label class="full">Updated by <span style="text-transform:none;font-weight:400">(optional — your name)</span>
+        <input type="text" id="f_updatedby" placeholder="e.g. Priya, SPOC">
+      </label>
+      <label class="full">Feedback / Suggestions <span style="text-transform:none;font-weight:400">(optional — for the alumni relations team)</span>
+        <textarea id="f_feedback" rows="3" placeholder="e.g. Need help getting page admin access, request a template for spotlight posts, etc." style="resize:vertical; font-family:'Inter',sans-serif; font-size:13.5px; border:1px solid var(--line); border-radius:8px; padding:9px 10px; width:100%; box-sizing:border-box;"></textarea>
+      </label>
+      <div class="entry-actions">
+        <button type="button" class="btn btn-outline" id="deleteEntryBtn" style="display:none">Delete this entry</button>
+        <div style="display:flex; gap:10px; margin-left:auto">
+          <button type="button" class="btn btn-outline" id="cancelEntry">Cancel</button>
+          <button type="submit" class="btn btn-gold" id="saveEntryBtn">Save entry</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script id="seed-data" type="application/json">[{"month": "2025-09-01", "campus": "GEHU - Dehradun", "department": "Media and Mass Communication", "programs": "BAJMC, MAJMC", "hasPage": "YES", "url": "https://www.linkedin.com/in/department-of-media-and-mass-communication-472763371/", "posts": 21, "spotlight": 2, "connections": 93, "followers": 114, "growth": null, "status": "Green", "sessions": []}, {"month": "2025-09-01", "campus": "GEHU - Dehradun", "department": "Agriculture", "programs": "BSc-Agri, MSc-Agri", "hasPage": "YES", "url": "https://www.linkedin.com/in/school-of-agriculture-graphic-era-hill-university-dehradun-2047a7368", "posts": 6, "spotlight": 1, "connections": 419, "followers": 485, "growth": null, "status": "Green", "sessions": []}, {"month": "2025-09-01", "campus": "GEHU - Dehradun", "department": "Mechanical", "programs": "ME, Diploma-ME", "hasPage": "YES", "url": "https://www.linkedin.com/in/department-of-mechanical-engineering-ddn-graphic-era-hill-university-dehradun-874815368/", "posts": 5, "spotlight": 0, "connections": 243, "followers": 316, "growth": null, "status": "Green", "sessions": []}, {"month": "2025-09-01", "campus": "GEHU - Dehradun", "department": "Pharmacy", "programs": "B.Pharma, D.Pharma", "hasPage": "YES", "url": "https://www.linkedin.com/company/school-of-pharmacy-graphic-era-hill-university/", "posts": 4, "spotlight": 0, "connections": 0, "followers": 739, "growth": null, "status": "Amber", "sessions": []}, {"month": "2025-09-01", "campus": "GEHU - Dehradun", "department": "Civil", "programs": "B.Tech-CE, M.Tech-CE, Diploma-CE", "hasPage": "YES", "url": "https://www.linkedin.com/company/department-of-civil-engineering-graphic-era-hill-university/", "posts": 4, "spotlight": 1, "connections": 0, "followers": 412, "growth": null, "status": "Amber", "sessions": []}, {"month": "2025-09-01", "campus": "GEHU - Dehradun", "department": "School of Management", "programs": "BBA, MBA", "hasPage": "YES", "url": "https://www.linkedin.com/in/som-gehu-ddn-2023a1377/", "posts": 2, "spotlight": 0, "connections": 157, "followers": 187, "growth": null, "status": "Amber", "sessions": []}, {"month": "2025-09-01", "campus": "GEHU - Dehradun", "department": "Visual Arts", "programs": "BFA, MVA", "hasPage": "YES", "url": "https://www.linkedin.com/in/department-of-fine-arts-graphic-era-hill-university-ba7356368/", "posts": 2, "spotlight": 0, "connections": 49, "followers": 61, "growth": null, "status": "Amber", "sessions": []}, {"month": "2025-09-01", "campus": "GEHU - Dehradun", "department": "CSE", "programs": "CSE/IT etc., Diploma-CS, M.Tech-CSE", "hasPage": "YES", "url": "https://www.linkedin.com/in/department-of-computer-science-and-engineering-gehu-dehradun-b998a0377/", "posts": 1, "spotlight": 0, "connections": 68, "followers": 77, "growth": null, "status": "Amber", "sessions": []}, {"month": "2025-09-01", "campus": "GEHU - Dehradun", "department": "SOC", "programs": "MCA, BCA, B.Sc. IT, BSc-CS", "hasPage": "YES", "url": "https://www.linkedin.com/company/school-of-computing-gehu-ddn/", "posts": 0, "spotlight": 0, "connections": 0, "followers": 238, "growth": null, "status": "Red", "sessions": []}, {"month": "2025-09-01", "campus": "GEHU - Dehradun", "department": "English", "programs": "BA-Hons, MA-Hons", "hasPage": "YES", "url": "http://www.linkedin.com/in/department-of-english-graphic-era-hill-university-84a9b736a", "posts": 0, "spotlight": 0, "connections": 109, "followers": 126, "growth": null, "status": "Red", "sessions": []}, {"month": "2025-09-01", "campus": "GEHU - Dehradun", "department": "School of Commerce", "programs": "B.Com, M.Com", "hasPage": "YES", "url": "https://www.linkedin.com/company/school-of-commerce-%E2%80%93-graphic-era-hill-university/", "posts": 1, "spotlight": 0, "connections": 0, "followers": 21, "growth": null, "status": "Amber", "sessions": []}, {"month": "2025-09-01", "campus": "GEHU - Dehradun", "department": "Applied Sciences (Maths)", "programs": "B.Sc. Maths, M.Sc. Maths, M.Sc. Data Science & Statistics", "hasPage": "YES", "url": "https://www.linkedin.com/in/department-of-mathematics-gehu-a1835b370/", "posts": 0, "spotlight": 0, "connections": 48, "followers": 52, "growth": null, "status": "Red", "sessions": []}, {"month": "2025-09-01", "campus": "GEHU - Dehradun", "department": "Applied Sciences (Physics)", "programs": "B.Sc. Physics, MSc-Physics", "hasPage": "YES", "url": "https://www.linkedin.com/in/department-of-physics-graphic-era-hill-university-184158376/", "posts": 0, "spotlight": 0, "connections": 11, "followers": 12, "growth": null, "status": "Red", "sessions": []}, {"month": "2025-09-01", "campus": "GEHU - Dehradun", "department": "Law", "programs": "BA-LLB/BBA-LLB, Masters-LLM", "hasPage": "YES", "url": "https://www.linkedin.com/in/school-of-law-graphic-era-hill-university-dehradun-uttarakhand-9a01b3377/", "posts": 0, "spotlight": 0, "connections": 14, "followers": 37, "growth": null, "status": "Red", "sessions": []}, {"month": "2025-09-01", "campus": "GEHU - Dehradun", "department": "Fashion Design", "programs": "BFD", "hasPage": "YES", "url": "https://www.linkedin.com/in/fashion-design-department-51336937a/", "posts": 0, "spotlight": 0, "connections": 7, "followers": 7, "growth": null, "status": "Red", "sessions": []}, {"month": "2025-09-01", "campus": "GEHU - Dehradun", "department": "Animation", "programs": "BSc (A&G), MSc-Animation and Gaming", "hasPage": "NO", "url": null, "posts": 0, "spotlight": 0, "connections": 0, "followers": 0, "growth": null, "status": "No Page", "sessions": []}, {"month": "2025-09-01", "campus": "GEHU - Haldwani", "department": "Media and Mass Communication", "programs": "BAJMC", "hasPage": "YES", "url": "https://www.linkedin.com/in/department-of-media-and-mass-communication-gehu-haldwani-430a1836b/", "posts": null, "spotlight": null, "connections": null, "followers": 264, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-10-01", "campus": "GEHU - Haldwani", "department": "Media and Mass Communication", "programs": "BAJMC", "hasPage": "YES", "url": "https://www.linkedin.com/in/department-of-media-and-mass-communication-gehu-haldwani-430a1836b/", "posts": null, "spotlight": null, "connections": null, "followers": 304, "growth": 40, "status": "Pending", "sessions": []}, {"month": "2025-11-01", "campus": "GEHU - Haldwani", "department": "Media and Mass Communication", "programs": "BAJMC", "hasPage": "YES", "url": "https://www.linkedin.com/in/department-of-media-and-mass-communication-gehu-haldwani-430a1836b/", "posts": null, "spotlight": null, "connections": null, "followers": 315, "growth": 11, "status": "Pending", "sessions": []}, {"month": "2025-12-01", "campus": "GEHU - Haldwani", "department": "Media and Mass Communication", "programs": "BAJMC", "hasPage": "YES", "url": "https://www.linkedin.com/in/department-of-media-and-mass-communication-gehu-haldwani-430a1836b/", "posts": null, "spotlight": null, "connections": null, "followers": 344, "growth": 29, "status": "Pending", "sessions": []}, {"month": "2026-01-01", "campus": "GEHU - Haldwani", "department": "Media and Mass Communication", "programs": "BAJMC", "hasPage": "YES", "url": "https://www.linkedin.com/in/department-of-media-and-mass-communication-gehu-haldwani-430a1836b/", "posts": null, "spotlight": null, "connections": null, "followers": 361, "growth": 17, "status": "Pending", "sessions": []}, {"month": "2026-02-01", "campus": "GEHU - Haldwani", "department": "Media and Mass Communication", "programs": "BAJMC", "hasPage": "YES", "url": "https://www.linkedin.com/in/department-of-media-and-mass-communication-gehu-haldwani-430a1836b/", "posts": null, "spotlight": null, "connections": null, "followers": 381, "growth": 20, "status": "Pending", "sessions": []}, {"month": "2026-03-01", "campus": "GEHU - Haldwani", "department": "Media and Mass Communication", "programs": "BAJMC", "hasPage": "YES", "url": "https://www.linkedin.com/in/department-of-media-and-mass-communication-gehu-haldwani-430a1836b/", "posts": null, "spotlight": null, "connections": null, "followers": 459, "growth": 78, "status": "Pending", "sessions": []}, {"month": "2026-04-01", "campus": "GEHU - Haldwani", "department": "Media and Mass Communication", "programs": "BAJMC", "hasPage": "YES", "url": "https://www.linkedin.com/in/department-of-media-and-mass-communication-gehu-haldwani-430a1836b/", "posts": null, "spotlight": null, "connections": null, "followers": 537, "growth": 78, "status": "Pending", "sessions": []}, {"month": "2026-05-01", "campus": "GEHU - Haldwani", "department": "Media and Mass Communication", "programs": "BAJMC", "hasPage": "YES", "url": "https://www.linkedin.com/in/department-of-media-and-mass-communication-gehu-haldwani-430a1836b/", "posts": null, "spotlight": null, "connections": null, "followers": 552, "growth": 15, "status": "Pending", "sessions": []}, {"month": "2026-06-01", "campus": "GEHU - Haldwani", "department": "Media and Mass Communication", "programs": "BAJMC", "hasPage": "YES", "url": "https://www.linkedin.com/in/department-of-media-and-mass-communication-gehu-haldwani-430a1836b/", "posts": 86, "spotlight": 8, "connections": "500+", "followers": 614, "growth": 62, "status": "Green", "sessions": [{"id": "seed1", "alumniName": "Ananya Rawat", "course": "BAJMC", "campus": "GEHU - Haldwani", "topic": "Breaking into broadcast journalism", "date": "2026-06-12", "photo": null}, {"id": "seed2", "alumniName": "Karan Bisht", "course": "MAJMC", "campus": "GEHU - Haldwani", "topic": "Building a personal brand as a video journalist", "date": "2026-06-20", "photo": null}]}, {"month": "2025-09-01", "campus": "GEHU - Haldwani", "department": "School Of Computing", "programs": "MCA, BCA, B.Tech CSE, B.Sc. Animation & Gaming, M.Tech CSE", "hasPage": "YES", "url": "https://www.linkedin.com/in/school-of-computing-405573371/", "posts": null, "spotlight": null, "connections": null, "followers": 604, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-10-01", "campus": "GEHU - Haldwani", "department": "School Of Computing", "programs": "MCA, BCA, B.Tech CSE, B.Sc. Animation & Gaming, M.Tech CSE", "hasPage": "YES", "url": "https://www.linkedin.com/in/school-of-computing-405573371/", "posts": null, "spotlight": null, "connections": null, "followers": 634, "growth": 30, "status": "Pending", "sessions": []}, {"month": "2025-11-01", "campus": "GEHU - Haldwani", "department": "School Of Computing", "programs": "MCA, BCA, B.Tech CSE, B.Sc. Animation & Gaming, M.Tech CSE", "hasPage": "YES", "url": "https://www.linkedin.com/in/school-of-computing-405573371/", "posts": null, "spotlight": null, "connections": null, "followers": 684, "growth": 50, "status": "Pending", "sessions": []}, {"month": "2025-12-01", "campus": "GEHU - Haldwani", "department": "School Of Computing", "programs": "MCA, BCA, B.Tech CSE, B.Sc. Animation & Gaming, M.Tech CSE", "hasPage": "YES", "url": "https://www.linkedin.com/in/school-of-computing-405573371/", "posts": null, "spotlight": null, "connections": null, "followers": 817, "growth": 133, "status": "Pending", "sessions": []}, {"month": "2026-01-01", "campus": "GEHU - Haldwani", "department": "School Of Computing", "programs": "MCA, BCA, B.Tech CSE, B.Sc. Animation & Gaming, M.Tech CSE", "hasPage": "YES", "url": "https://www.linkedin.com/in/school-of-computing-405573371/", "posts": null, "spotlight": null, "connections": null, "followers": 857, "growth": 40, "status": "Pending", "sessions": []}, {"month": "2026-02-01", "campus": "GEHU - Haldwani", "department": "School Of Computing", "programs": "MCA, BCA, B.Tech CSE, B.Sc. Animation & Gaming, M.Tech CSE", "hasPage": "YES", "url": "https://www.linkedin.com/in/school-of-computing-405573371/", "posts": null, "spotlight": null, "connections": null, "followers": 926, "growth": 69, "status": "Pending", "sessions": []}, {"month": "2026-03-01", "campus": "GEHU - Haldwani", "department": "School Of Computing", "programs": "MCA, BCA, B.Tech CSE, B.Sc. Animation & Gaming, M.Tech CSE", "hasPage": "YES", "url": "https://www.linkedin.com/in/school-of-computing-405573371/", "posts": null, "spotlight": null, "connections": null, "followers": 994, "growth": 68, "status": "Pending", "sessions": []}, {"month": "2026-04-01", "campus": "GEHU - Haldwani", "department": "School Of Computing", "programs": "MCA, BCA, B.Tech CSE, B.Sc. Animation & Gaming, M.Tech CSE", "hasPage": "YES", "url": "https://www.linkedin.com/in/school-of-computing-405573371/", "posts": null, "spotlight": null, "connections": null, "followers": 1048, "growth": 54, "status": "Pending", "sessions": []}, {"month": "2026-05-01", "campus": "GEHU - Haldwani", "department": "School Of Computing", "programs": "MCA, BCA, B.Tech CSE, B.Sc. Animation & Gaming, M.Tech CSE", "hasPage": "YES", "url": "https://www.linkedin.com/in/school-of-computing-405573371/", "posts": null, "spotlight": null, "connections": null, "followers": 1113, "growth": 65, "status": "Pending", "sessions": []}, {"month": "2026-06-01", "campus": "GEHU - Haldwani", "department": "School Of Computing", "programs": "MCA, BCA, B.Tech CSE, B.Sc. Animation & Gaming, M.Tech CSE", "hasPage": "YES", "url": "https://www.linkedin.com/in/school-of-computing-405573371/", "posts": 78, "spotlight": 14, "connections": 701, "followers": 1151, "growth": 38, "status": "Green", "sessions": [{"id": "seed3", "alumniName": "Priya Negi", "course": "MCA", "campus": "GEHU - Haldwani", "topic": "Landing your first SDE role", "date": "2026-06-18", "photo": null}]}, {"month": "2025-09-01", "campus": "GEHU - Haldwani", "department": "School Of Management", "programs": "BBA, MBA, B.Com(H)", "hasPage": "YES", "url": "https://www.linkedin.com/in/school-of-management-graphic-era-hill-university-haldwani-b32a1136b/", "posts": null, "spotlight": null, "connections": null, "followers": 283, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-10-01", "campus": "GEHU - Haldwani", "department": "School Of Management", "programs": "BBA, MBA, B.Com(H)", "hasPage": "YES", "url": "https://www.linkedin.com/in/school-of-management-graphic-era-hill-university-haldwani-b32a1136b/", "posts": null, "spotlight": null, "connections": null, "followers": 307, "growth": 24, "status": "Pending", "sessions": []}, {"month": "2025-11-01", "campus": "GEHU - Haldwani", "department": "School Of Management", "programs": "BBA, MBA, B.Com(H)", "hasPage": "YES", "url": "https://www.linkedin.com/in/school-of-management-graphic-era-hill-university-haldwani-b32a1136b/", "posts": null, "spotlight": null, "connections": null, "followers": 344, "growth": 37, "status": "Pending", "sessions": []}, {"month": "2025-12-01", "campus": "GEHU - Haldwani", "department": "School Of Management", "programs": "BBA, MBA, B.Com(H)", "hasPage": "YES", "url": "https://www.linkedin.com/in/school-of-management-graphic-era-hill-university-haldwani-b32a1136b/", "posts": null, "spotlight": null, "connections": null, "followers": 358, "growth": 14, "status": "Pending", "sessions": []}, {"month": "2026-01-01", "campus": "GEHU - Haldwani", "department": "School Of Management", "programs": "BBA, MBA, B.Com(H)", "hasPage": "YES", "url": "https://www.linkedin.com/in/school-of-management-graphic-era-hill-university-haldwani-b32a1136b/", "posts": null, "spotlight": null, "connections": null, "followers": 383, "growth": 25, "status": "Pending", "sessions": []}, {"month": "2026-02-01", "campus": "GEHU - Haldwani", "department": "School Of Management", "programs": "BBA, MBA, B.Com(H)", "hasPage": "YES", "url": "https://www.linkedin.com/in/school-of-management-graphic-era-hill-university-haldwani-b32a1136b/", "posts": null, "spotlight": null, "connections": null, "followers": 410, "growth": 27, "status": "Pending", "sessions": []}, {"month": "2026-03-01", "campus": "GEHU - Haldwani", "department": "School Of Management", "programs": "BBA, MBA, B.Com(H)", "hasPage": "YES", "url": "https://www.linkedin.com/in/school-of-management-graphic-era-hill-university-haldwani-b32a1136b/", "posts": null, "spotlight": null, "connections": null, "followers": 434, "growth": 24, "status": "Pending", "sessions": []}, {"month": "2026-04-01", "campus": "GEHU - Haldwani", "department": "School Of Management", "programs": "BBA, MBA, B.Com(H)", "hasPage": "YES", "url": "https://www.linkedin.com/in/school-of-management-graphic-era-hill-university-haldwani-b32a1136b/", "posts": null, "spotlight": null, "connections": null, "followers": 436, "growth": 2, "status": "Pending", "sessions": []}, {"month": "2026-05-01", "campus": "GEHU - Haldwani", "department": "School Of Management", "programs": "BBA, MBA, B.Com(H)", "hasPage": "YES", "url": "https://www.linkedin.com/in/school-of-management-graphic-era-hill-university-haldwani-b32a1136b/", "posts": null, "spotlight": null, "connections": null, "followers": 440, "growth": 4, "status": "Pending", "sessions": []}, {"month": "2026-06-01", "campus": "GEHU - Haldwani", "department": "School Of Management", "programs": "BBA, MBA, B.Com(H)", "hasPage": "YES", "url": "https://www.linkedin.com/in/school-of-management-graphic-era-hill-university-haldwani-b32a1136b/", "posts": 50, "spotlight": 3, "connections": 352, "followers": 440, "growth": 0, "status": "Green", "sessions": []}, {"month": "2025-09-01", "campus": "GEHU - Haldwani", "department": "Department of Hotel and Hospitality Management", "programs": "BHM", "hasPage": "YES", "url": "https://www.linkedin.com/in/department-of-hotel-and-hospitality-management/", "posts": null, "spotlight": null, "connections": null, "followers": 197, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-10-01", "campus": "GEHU - Haldwani", "department": "Department of Hotel and Hospitality Management", "programs": "BHM", "hasPage": "YES", "url": "https://www.linkedin.com/in/department-of-hotel-and-hospitality-management/", "posts": null, "spotlight": null, "connections": null, "followers": 209, "growth": 12, "status": "Pending", "sessions": []}, {"month": "2025-11-01", "campus": "GEHU - Haldwani", "department": "Department of Hotel and Hospitality Management", "programs": "BHM", "hasPage": "YES", "url": "https://www.linkedin.com/in/department-of-hotel-and-hospitality-management/", "posts": null, "spotlight": null, "connections": null, "followers": 222, "growth": 13, "status": "Pending", "sessions": []}, {"month": "2025-12-01", "campus": "GEHU - Haldwani", "department": "Department of Hotel and Hospitality Management", "programs": "BHM", "hasPage": "YES", "url": "https://www.linkedin.com/in/department-of-hotel-and-hospitality-management/", "posts": null, "spotlight": null, "connections": null, "followers": 226, "growth": 4, "status": "Pending", "sessions": []}, {"month": "2026-01-01", "campus": "GEHU - Haldwani", "department": "Department of Hotel and Hospitality Management", "programs": "BHM", "hasPage": "YES", "url": "https://www.linkedin.com/in/department-of-hotel-and-hospitality-management/", "posts": null, "spotlight": null, "connections": null, "followers": 238, "growth": 12, "status": "Pending", "sessions": []}, {"month": "2026-02-01", "campus": "GEHU - Haldwani", "department": "Department of Hotel and Hospitality Management", "programs": "BHM", "hasPage": "YES", "url": "https://www.linkedin.com/in/department-of-hotel-and-hospitality-management/", "posts": null, "spotlight": null, "connections": null, "followers": 248, "growth": 10, "status": "Pending", "sessions": []}, {"month": "2026-03-01", "campus": "GEHU - Haldwani", "department": "Department of Hotel and Hospitality Management", "programs": "BHM", "hasPage": "YES", "url": "https://www.linkedin.com/in/department-of-hotel-and-hospitality-management/", "posts": null, "spotlight": null, "connections": null, "followers": 332, "growth": 84, "status": "Pending", "sessions": []}, {"month": "2026-04-01", "campus": "GEHU - Haldwani", "department": "Department of Hotel and Hospitality Management", "programs": "BHM", "hasPage": "YES", "url": "https://www.linkedin.com/in/department-of-hotel-and-hospitality-management/", "posts": null, "spotlight": null, "connections": null, "followers": 343, "growth": 11, "status": "Pending", "sessions": []}, {"month": "2026-05-01", "campus": "GEHU - Haldwani", "department": "Department of Hotel and Hospitality Management", "programs": "BHM", "hasPage": "YES", "url": "https://www.linkedin.com/in/department-of-hotel-and-hospitality-management/", "posts": null, "spotlight": null, "connections": null, "followers": 348, "growth": 5, "status": "Pending", "sessions": []}, {"month": "2026-06-01", "campus": "GEHU - Haldwani", "department": "Department of Hotel and Hospitality Management", "programs": "BHM", "hasPage": "YES", "url": "https://www.linkedin.com/in/department-of-hotel-and-hospitality-management/", "posts": 43, "spotlight": 0, "connections": 295, "followers": 364, "growth": 16, "status": "Green", "sessions": []}, {"month": "2025-09-01", "campus": "GEHU - Bhimtal", "department": "CSE", "programs": "B.Tech-CSE, M.Tech-CSE", "hasPage": "YES", "url": "https://www.linkedin.com/company/cse-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 238, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-10-01", "campus": "GEHU - Bhimtal", "department": "CSE", "programs": "B.Tech-CSE, M.Tech-CSE", "hasPage": "YES", "url": "https://www.linkedin.com/company/cse-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 249, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-11-01", "campus": "GEHU - Bhimtal", "department": "CSE", "programs": "B.Tech-CSE, M.Tech-CSE", "hasPage": "YES", "url": "https://www.linkedin.com/company/cse-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 257, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-12-01", "campus": "GEHU - Bhimtal", "department": "CSE", "programs": "B.Tech-CSE, M.Tech-CSE", "hasPage": "YES", "url": "https://www.linkedin.com/company/cse-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 273, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-01-01", "campus": "GEHU - Bhimtal", "department": "CSE", "programs": "B.Tech-CSE, M.Tech-CSE", "hasPage": "YES", "url": "https://www.linkedin.com/company/cse-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 288, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-02-01", "campus": "GEHU - Bhimtal", "department": "CSE", "programs": "B.Tech-CSE, M.Tech-CSE", "hasPage": "YES", "url": "https://www.linkedin.com/company/cse-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 303, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-03-01", "campus": "GEHU - Bhimtal", "department": "CSE", "programs": "B.Tech-CSE, M.Tech-CSE", "hasPage": "YES", "url": "https://www.linkedin.com/company/cse-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 315, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-04-01", "campus": "GEHU - Bhimtal", "department": "CSE", "programs": "B.Tech-CSE, M.Tech-CSE", "hasPage": "YES", "url": "https://www.linkedin.com/company/cse-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 326, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-05-01", "campus": "GEHU - Bhimtal", "department": "CSE", "programs": "B.Tech-CSE, M.Tech-CSE", "hasPage": "YES", "url": "https://www.linkedin.com/company/cse-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 351, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-06-01", "campus": "GEHU - Bhimtal", "department": "CSE", "programs": "B.Tech-CSE, M.Tech-CSE", "hasPage": "YES", "url": "https://www.linkedin.com/company/cse-gehu-bhimtal/", "posts": 14, "spotlight": 2, "connections": 480, "followers": 361, "growth": null, "status": "Green", "sessions": [{"id": "seed4", "alumniName": "Rohit Panwar", "course": "B.Tech-CSE", "campus": "GEHU - Bhimtal", "topic": "Cracking product-based company interviews", "date": "2026-06-14", "photo": null}]}, {"month": "2025-09-01", "campus": "GEHU - Bhimtal", "department": "Mechanical", "programs": "B.Tech-ME, Diploma-ME", "hasPage": "YES", "url": "https://www.linkedin.com/company/mechanical-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 163, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-10-01", "campus": "GEHU - Bhimtal", "department": "Mechanical", "programs": "B.Tech-ME, Diploma-ME", "hasPage": "YES", "url": "https://www.linkedin.com/company/mechanical-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 173, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-11-01", "campus": "GEHU - Bhimtal", "department": "Mechanical", "programs": "B.Tech-ME, Diploma-ME", "hasPage": "YES", "url": "https://www.linkedin.com/company/mechanical-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 177, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-12-01", "campus": "GEHU - Bhimtal", "department": "Mechanical", "programs": "B.Tech-ME, Diploma-ME", "hasPage": "YES", "url": "https://www.linkedin.com/company/mechanical-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 181, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-01-01", "campus": "GEHU - Bhimtal", "department": "Mechanical", "programs": "B.Tech-ME, Diploma-ME", "hasPage": "YES", "url": "https://www.linkedin.com/company/mechanical-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 186, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-02-01", "campus": "GEHU - Bhimtal", "department": "Mechanical", "programs": "B.Tech-ME, Diploma-ME", "hasPage": "YES", "url": "https://www.linkedin.com/company/mechanical-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 193, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-03-01", "campus": "GEHU - Bhimtal", "department": "Mechanical", "programs": "B.Tech-ME, Diploma-ME", "hasPage": "YES", "url": "https://www.linkedin.com/company/mechanical-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 200, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-04-01", "campus": "GEHU - Bhimtal", "department": "Mechanical", "programs": "B.Tech-ME, Diploma-ME", "hasPage": "YES", "url": "https://www.linkedin.com/company/mechanical-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 212, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-05-01", "campus": "GEHU - Bhimtal", "department": "Mechanical", "programs": "B.Tech-ME, Diploma-ME", "hasPage": "YES", "url": "https://www.linkedin.com/company/mechanical-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 225, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-06-01", "campus": "GEHU - Bhimtal", "department": "Mechanical", "programs": "B.Tech-ME, Diploma-ME", "hasPage": "YES", "url": "https://www.linkedin.com/company/mechanical-gehu-bhimtal/", "posts": 6, "spotlight": 1, "connections": 260, "followers": 229, "growth": null, "status": "Amber", "sessions": []}, {"month": "2025-09-01", "campus": "GEHU - Bhimtal", "department": "Civil", "programs": "B.Tech-CE, Diploma-CE", "hasPage": "YES", "url": "https://www.linkedin.com/company/civil-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 105, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-10-01", "campus": "GEHU - Bhimtal", "department": "Civil", "programs": "B.Tech-CE, Diploma-CE", "hasPage": "YES", "url": "https://www.linkedin.com/company/civil-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 110, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-11-01", "campus": "GEHU - Bhimtal", "department": "Civil", "programs": "B.Tech-CE, Diploma-CE", "hasPage": "YES", "url": "https://www.linkedin.com/company/civil-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 122, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-12-01", "campus": "GEHU - Bhimtal", "department": "Civil", "programs": "B.Tech-CE, Diploma-CE", "hasPage": "YES", "url": "https://www.linkedin.com/company/civil-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 132, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-01-01", "campus": "GEHU - Bhimtal", "department": "Civil", "programs": "B.Tech-CE, Diploma-CE", "hasPage": "YES", "url": "https://www.linkedin.com/company/civil-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 140, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-02-01", "campus": "GEHU - Bhimtal", "department": "Civil", "programs": "B.Tech-CE, Diploma-CE", "hasPage": "YES", "url": "https://www.linkedin.com/company/civil-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 145, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-03-01", "campus": "GEHU - Bhimtal", "department": "Civil", "programs": "B.Tech-CE, Diploma-CE", "hasPage": "YES", "url": "https://www.linkedin.com/company/civil-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 154, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-04-01", "campus": "GEHU - Bhimtal", "department": "Civil", "programs": "B.Tech-CE, Diploma-CE", "hasPage": "YES", "url": "https://www.linkedin.com/company/civil-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 165, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-05-01", "campus": "GEHU - Bhimtal", "department": "Civil", "programs": "B.Tech-CE, Diploma-CE", "hasPage": "YES", "url": "https://www.linkedin.com/company/civil-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 171, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-06-01", "campus": "GEHU - Bhimtal", "department": "Civil", "programs": "B.Tech-CE, Diploma-CE", "hasPage": "YES", "url": "https://www.linkedin.com/company/civil-gehu-bhimtal/", "posts": 4, "spotlight": 0, "connections": 140, "followers": 173, "growth": null, "status": "Amber", "sessions": []}, {"month": "2025-09-01", "campus": "GEHU - Bhimtal", "department": "School of Management", "programs": "BBA, MBA", "hasPage": "YES", "url": "https://www.linkedin.com/company/school-of-management-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 190, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-10-01", "campus": "GEHU - Bhimtal", "department": "School of Management", "programs": "BBA, MBA", "hasPage": "YES", "url": "https://www.linkedin.com/company/school-of-management-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 208, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-11-01", "campus": "GEHU - Bhimtal", "department": "School of Management", "programs": "BBA, MBA", "hasPage": "YES", "url": "https://www.linkedin.com/company/school-of-management-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 223, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-12-01", "campus": "GEHU - Bhimtal", "department": "School of Management", "programs": "BBA, MBA", "hasPage": "YES", "url": "https://www.linkedin.com/company/school-of-management-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 236, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-01-01", "campus": "GEHU - Bhimtal", "department": "School of Management", "programs": "BBA, MBA", "hasPage": "YES", "url": "https://www.linkedin.com/company/school-of-management-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 245, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-02-01", "campus": "GEHU - Bhimtal", "department": "School of Management", "programs": "BBA, MBA", "hasPage": "YES", "url": "https://www.linkedin.com/company/school-of-management-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 256, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-03-01", "campus": "GEHU - Bhimtal", "department": "School of Management", "programs": "BBA, MBA", "hasPage": "YES", "url": "https://www.linkedin.com/company/school-of-management-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 271, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-04-01", "campus": "GEHU - Bhimtal", "department": "School of Management", "programs": "BBA, MBA", "hasPage": "YES", "url": "https://www.linkedin.com/company/school-of-management-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 279, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-05-01", "campus": "GEHU - Bhimtal", "department": "School of Management", "programs": "BBA, MBA", "hasPage": "YES", "url": "https://www.linkedin.com/company/school-of-management-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 286, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-06-01", "campus": "GEHU - Bhimtal", "department": "School of Management", "programs": "BBA, MBA", "hasPage": "YES", "url": "https://www.linkedin.com/company/school-of-management-gehu-bhimtal/", "posts": 9, "spotlight": 1, "connections": 300, "followers": 303, "growth": null, "status": "Amber", "sessions": [{"id": "seed5", "alumniName": "Simran Kandari", "course": "MBA", "campus": "GEHU - Bhimtal", "topic": "Career paths in brand management", "date": "2026-06-22", "photo": null}]}, {"month": "2025-09-01", "campus": "GEHU - Bhimtal", "department": "Applied Sciences (Physics)", "programs": "B.Sc. Physics, M.Sc. Physics", "hasPage": "YES", "url": "https://www.linkedin.com/company/applied-sciences-(physics)-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 40, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-10-01", "campus": "GEHU - Bhimtal", "department": "Applied Sciences (Physics)", "programs": "B.Sc. Physics, M.Sc. Physics", "hasPage": "YES", "url": "https://www.linkedin.com/company/applied-sciences-(physics)-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 42, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-11-01", "campus": "GEHU - Bhimtal", "department": "Applied Sciences (Physics)", "programs": "B.Sc. Physics, M.Sc. Physics", "hasPage": "YES", "url": "https://www.linkedin.com/company/applied-sciences-(physics)-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 48, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-12-01", "campus": "GEHU - Bhimtal", "department": "Applied Sciences (Physics)", "programs": "B.Sc. Physics, M.Sc. Physics", "hasPage": "YES", "url": "https://www.linkedin.com/company/applied-sciences-(physics)-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 50, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-01-01", "campus": "GEHU - Bhimtal", "department": "Applied Sciences (Physics)", "programs": "B.Sc. Physics, M.Sc. Physics", "hasPage": "YES", "url": "https://www.linkedin.com/company/applied-sciences-(physics)-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 54, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-02-01", "campus": "GEHU - Bhimtal", "department": "Applied Sciences (Physics)", "programs": "B.Sc. Physics, M.Sc. Physics", "hasPage": "YES", "url": "https://www.linkedin.com/company/applied-sciences-(physics)-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 56, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-03-01", "campus": "GEHU - Bhimtal", "department": "Applied Sciences (Physics)", "programs": "B.Sc. Physics, M.Sc. Physics", "hasPage": "YES", "url": "https://www.linkedin.com/company/applied-sciences-(physics)-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 62, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-04-01", "campus": "GEHU - Bhimtal", "department": "Applied Sciences (Physics)", "programs": "B.Sc. Physics, M.Sc. Physics", "hasPage": "YES", "url": "https://www.linkedin.com/company/applied-sciences-(physics)-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 62, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-05-01", "campus": "GEHU - Bhimtal", "department": "Applied Sciences (Physics)", "programs": "B.Sc. Physics, M.Sc. Physics", "hasPage": "YES", "url": "https://www.linkedin.com/company/applied-sciences-(physics)-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 67, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-06-01", "campus": "GEHU - Bhimtal", "department": "Applied Sciences (Physics)", "programs": "B.Sc. Physics, M.Sc. Physics", "hasPage": "YES", "url": "https://www.linkedin.com/company/applied-sciences-(physics)-gehu-bhimtal/", "posts": 1, "spotlight": 0, "connections": 60, "followers": 70, "growth": null, "status": "Red", "sessions": []}, {"month": "2025-09-01", "campus": "GEHU - Bhimtal", "department": "Law", "programs": "BA-LLB, LLM", "hasPage": "YES", "url": "https://www.linkedin.com/company/law-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 79, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-10-01", "campus": "GEHU - Bhimtal", "department": "Law", "programs": "BA-LLB, LLM", "hasPage": "YES", "url": "https://www.linkedin.com/company/law-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 81, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-11-01", "campus": "GEHU - Bhimtal", "department": "Law", "programs": "BA-LLB, LLM", "hasPage": "YES", "url": "https://www.linkedin.com/company/law-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 88, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-12-01", "campus": "GEHU - Bhimtal", "department": "Law", "programs": "BA-LLB, LLM", "hasPage": "YES", "url": "https://www.linkedin.com/company/law-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 90, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-01-01", "campus": "GEHU - Bhimtal", "department": "Law", "programs": "BA-LLB, LLM", "hasPage": "YES", "url": "https://www.linkedin.com/company/law-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 99, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-02-01", "campus": "GEHU - Bhimtal", "department": "Law", "programs": "BA-LLB, LLM", "hasPage": "YES", "url": "https://www.linkedin.com/company/law-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 104, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-03-01", "campus": "GEHU - Bhimtal", "department": "Law", "programs": "BA-LLB, LLM", "hasPage": "YES", "url": "https://www.linkedin.com/company/law-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 114, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-04-01", "campus": "GEHU - Bhimtal", "department": "Law", "programs": "BA-LLB, LLM", "hasPage": "YES", "url": "https://www.linkedin.com/company/law-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 120, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-05-01", "campus": "GEHU - Bhimtal", "department": "Law", "programs": "BA-LLB, LLM", "hasPage": "YES", "url": "https://www.linkedin.com/company/law-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 130, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-06-01", "campus": "GEHU - Bhimtal", "department": "Law", "programs": "BA-LLB, LLM", "hasPage": "YES", "url": "https://www.linkedin.com/company/law-gehu-bhimtal/", "posts": 3, "spotlight": 0, "connections": 110, "followers": 134, "growth": null, "status": "Amber", "sessions": []}, {"month": "2025-09-01", "campus": "GEHU - Bhimtal", "department": "Pharmacy", "programs": "B.Pharma, D.Pharma", "hasPage": "YES", "url": "https://www.linkedin.com/company/pharmacy-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 144, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-10-01", "campus": "GEHU - Bhimtal", "department": "Pharmacy", "programs": "B.Pharma, D.Pharma", "hasPage": "YES", "url": "https://www.linkedin.com/company/pharmacy-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 148, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-11-01", "campus": "GEHU - Bhimtal", "department": "Pharmacy", "programs": "B.Pharma, D.Pharma", "hasPage": "YES", "url": "https://www.linkedin.com/company/pharmacy-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 151, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-12-01", "campus": "GEHU - Bhimtal", "department": "Pharmacy", "programs": "B.Pharma, D.Pharma", "hasPage": "YES", "url": "https://www.linkedin.com/company/pharmacy-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 164, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-01-01", "campus": "GEHU - Bhimtal", "department": "Pharmacy", "programs": "B.Pharma, D.Pharma", "hasPage": "YES", "url": "https://www.linkedin.com/company/pharmacy-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 170, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-02-01", "campus": "GEHU - Bhimtal", "department": "Pharmacy", "programs": "B.Pharma, D.Pharma", "hasPage": "YES", "url": "https://www.linkedin.com/company/pharmacy-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 185, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-03-01", "campus": "GEHU - Bhimtal", "department": "Pharmacy", "programs": "B.Pharma, D.Pharma", "hasPage": "YES", "url": "https://www.linkedin.com/company/pharmacy-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 192, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-04-01", "campus": "GEHU - Bhimtal", "department": "Pharmacy", "programs": "B.Pharma, D.Pharma", "hasPage": "YES", "url": "https://www.linkedin.com/company/pharmacy-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 196, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-05-01", "campus": "GEHU - Bhimtal", "department": "Pharmacy", "programs": "B.Pharma, D.Pharma", "hasPage": "YES", "url": "https://www.linkedin.com/company/pharmacy-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 202, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-06-01", "campus": "GEHU - Bhimtal", "department": "Pharmacy", "programs": "B.Pharma, D.Pharma", "hasPage": "YES", "url": "https://www.linkedin.com/company/pharmacy-gehu-bhimtal/", "posts": 7, "spotlight": 1, "connections": 220, "followers": 206, "growth": null, "status": "Amber", "sessions": []}, {"month": "2025-09-01", "campus": "GEHU - Bhimtal", "department": "Hotel Management", "programs": "BHM", "hasPage": "YES", "url": "https://www.linkedin.com/company/hotel-management-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 67, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-10-01", "campus": "GEHU - Bhimtal", "department": "Hotel Management", "programs": "BHM", "hasPage": "YES", "url": "https://www.linkedin.com/company/hotel-management-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 72, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-11-01", "campus": "GEHU - Bhimtal", "department": "Hotel Management", "programs": "BHM", "hasPage": "YES", "url": "https://www.linkedin.com/company/hotel-management-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 80, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-12-01", "campus": "GEHU - Bhimtal", "department": "Hotel Management", "programs": "BHM", "hasPage": "YES", "url": "https://www.linkedin.com/company/hotel-management-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 86, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-01-01", "campus": "GEHU - Bhimtal", "department": "Hotel Management", "programs": "BHM", "hasPage": "YES", "url": "https://www.linkedin.com/company/hotel-management-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 89, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-02-01", "campus": "GEHU - Bhimtal", "department": "Hotel Management", "programs": "BHM", "hasPage": "YES", "url": "https://www.linkedin.com/company/hotel-management-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 95, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-03-01", "campus": "GEHU - Bhimtal", "department": "Hotel Management", "programs": "BHM", "hasPage": "YES", "url": "https://www.linkedin.com/company/hotel-management-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 101, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-04-01", "campus": "GEHU - Bhimtal", "department": "Hotel Management", "programs": "BHM", "hasPage": "YES", "url": "https://www.linkedin.com/company/hotel-management-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 105, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-05-01", "campus": "GEHU - Bhimtal", "department": "Hotel Management", "programs": "BHM", "hasPage": "YES", "url": "https://www.linkedin.com/company/hotel-management-gehu-bhimtal/", "posts": null, "spotlight": null, "connections": null, "followers": 110, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-06-01", "campus": "GEHU - Bhimtal", "department": "Hotel Management", "programs": "BHM", "hasPage": "YES", "url": "https://www.linkedin.com/company/hotel-management-gehu-bhimtal/", "posts": 5, "spotlight": 0, "connections": 95, "followers": 112, "growth": null, "status": "Amber", "sessions": []}, {"month": "2026-06-01", "campus": "GEHU - Bhimtal", "department": "Animation", "programs": "BSc (A&G)", "hasPage": "NO", "url": null, "posts": 0, "spotlight": 0, "connections": 0, "followers": 0, "growth": null, "status": "No Page", "sessions": []}, {"month": "2025-09-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Computer Science", "programs": "B.Tech-CS, M.Tech-CS", "hasPage": "YES", "url": "https://www.linkedin.com/company/computer-science-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 349, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-10-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Computer Science", "programs": "B.Tech-CS, M.Tech-CS", "hasPage": "YES", "url": "https://www.linkedin.com/company/computer-science-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 379, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-11-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Computer Science", "programs": "B.Tech-CS, M.Tech-CS", "hasPage": "YES", "url": "https://www.linkedin.com/company/computer-science-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 394, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-12-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Computer Science", "programs": "B.Tech-CS, M.Tech-CS", "hasPage": "YES", "url": "https://www.linkedin.com/company/computer-science-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 421, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-01-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Computer Science", "programs": "B.Tech-CS, M.Tech-CS", "hasPage": "YES", "url": "https://www.linkedin.com/company/computer-science-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 438, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-02-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Computer Science", "programs": "B.Tech-CS, M.Tech-CS", "hasPage": "YES", "url": "https://www.linkedin.com/company/computer-science-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 453, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-03-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Computer Science", "programs": "B.Tech-CS, M.Tech-CS", "hasPage": "YES", "url": "https://www.linkedin.com/company/computer-science-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 477, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-04-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Computer Science", "programs": "B.Tech-CS, M.Tech-CS", "hasPage": "YES", "url": "https://www.linkedin.com/company/computer-science-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 499, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-05-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Computer Science", "programs": "B.Tech-CS, M.Tech-CS", "hasPage": "YES", "url": "https://www.linkedin.com/company/computer-science-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 517, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-06-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Computer Science", "programs": "B.Tech-CS, M.Tech-CS", "hasPage": "YES", "url": "https://www.linkedin.com/company/computer-science-ge-deemed/", "posts": 18, "spotlight": 3, "connections": 610, "followers": 547, "growth": null, "status": "Green", "sessions": [{"id": "seed6", "alumniName": "Aditya Verma", "course": "B.Tech-CS", "campus": "Graphic Era (Deemed to be University), Dehradun", "topic": "From campus to FAANG: a roadmap", "date": "2026-06-10", "photo": null}, {"id": "seed7", "alumniName": "Neha Joshi", "course": "M.Tech-CS", "campus": "Graphic Era (Deemed to be University), Dehradun", "topic": "Research careers after a master's degree", "date": "2026-06-25", "photo": null}]}, {"month": "2025-09-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Electronics & Communication", "programs": "B.Tech-ECE", "hasPage": "YES", "url": "https://www.linkedin.com/company/electronics-and-communication-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 175, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-10-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Electronics & Communication", "programs": "B.Tech-ECE", "hasPage": "YES", "url": "https://www.linkedin.com/company/electronics-and-communication-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 187, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-11-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Electronics & Communication", "programs": "B.Tech-ECE", "hasPage": "YES", "url": "https://www.linkedin.com/company/electronics-and-communication-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 194, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-12-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Electronics & Communication", "programs": "B.Tech-ECE", "hasPage": "YES", "url": "https://www.linkedin.com/company/electronics-and-communication-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 208, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-01-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Electronics & Communication", "programs": "B.Tech-ECE", "hasPage": "YES", "url": "https://www.linkedin.com/company/electronics-and-communication-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 217, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-02-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Electronics & Communication", "programs": "B.Tech-ECE", "hasPage": "YES", "url": "https://www.linkedin.com/company/electronics-and-communication-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 234, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-03-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Electronics & Communication", "programs": "B.Tech-ECE", "hasPage": "YES", "url": "https://www.linkedin.com/company/electronics-and-communication-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 250, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-04-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Electronics & Communication", "programs": "B.Tech-ECE", "hasPage": "YES", "url": "https://www.linkedin.com/company/electronics-and-communication-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 266, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-05-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Electronics & Communication", "programs": "B.Tech-ECE", "hasPage": "YES", "url": "https://www.linkedin.com/company/electronics-and-communication-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 270, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-06-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Electronics & Communication", "programs": "B.Tech-ECE", "hasPage": "YES", "url": "https://www.linkedin.com/company/electronics-and-communication-ge-deemed/", "posts": 7, "spotlight": 1, "connections": 250, "followers": 277, "growth": null, "status": "Amber", "sessions": []}, {"month": "2025-09-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "MBA", "programs": "MBA", "hasPage": "YES", "url": "https://www.linkedin.com/company/mba-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 247, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-10-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "MBA", "programs": "MBA", "hasPage": "YES", "url": "https://www.linkedin.com/company/mba-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 263, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-11-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "MBA", "programs": "MBA", "hasPage": "YES", "url": "https://www.linkedin.com/company/mba-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 281, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-12-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "MBA", "programs": "MBA", "hasPage": "YES", "url": "https://www.linkedin.com/company/mba-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 295, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-01-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "MBA", "programs": "MBA", "hasPage": "YES", "url": "https://www.linkedin.com/company/mba-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 303, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-02-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "MBA", "programs": "MBA", "hasPage": "YES", "url": "https://www.linkedin.com/company/mba-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 315, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-03-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "MBA", "programs": "MBA", "hasPage": "YES", "url": "https://www.linkedin.com/company/mba-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 331, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-04-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "MBA", "programs": "MBA", "hasPage": "YES", "url": "https://www.linkedin.com/company/mba-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 343, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-05-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "MBA", "programs": "MBA", "hasPage": "YES", "url": "https://www.linkedin.com/company/mba-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 364, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-06-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "MBA", "programs": "MBA", "hasPage": "YES", "url": "https://www.linkedin.com/company/mba-ge-deemed/", "posts": 11, "spotlight": 2, "connections": 400, "followers": 382, "growth": null, "status": "Green", "sessions": [{"id": "seed8", "alumniName": "Ishaan Kapoor", "course": "MBA", "campus": "Graphic Era (Deemed to be University), Dehradun", "topic": "Consulting 101: breaking in and standing out", "date": "2026-06-17", "photo": null}]}, {"month": "2025-09-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "BBA", "programs": "BBA", "hasPage": "YES", "url": "https://www.linkedin.com/company/bba-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 143, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-10-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "BBA", "programs": "BBA", "hasPage": "YES", "url": "https://www.linkedin.com/company/bba-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 153, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-11-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "BBA", "programs": "BBA", "hasPage": "YES", "url": "https://www.linkedin.com/company/bba-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 158, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-12-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "BBA", "programs": "BBA", "hasPage": "YES", "url": "https://www.linkedin.com/company/bba-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 165, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-01-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "BBA", "programs": "BBA", "hasPage": "YES", "url": "https://www.linkedin.com/company/bba-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 170, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-02-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "BBA", "programs": "BBA", "hasPage": "YES", "url": "https://www.linkedin.com/company/bba-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 176, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-03-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "BBA", "programs": "BBA", "hasPage": "YES", "url": "https://www.linkedin.com/company/bba-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 190, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-04-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "BBA", "programs": "BBA", "hasPage": "YES", "url": "https://www.linkedin.com/company/bba-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 201, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-05-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "BBA", "programs": "BBA", "hasPage": "YES", "url": "https://www.linkedin.com/company/bba-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 212, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-06-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "BBA", "programs": "BBA", "hasPage": "YES", "url": "https://www.linkedin.com/company/bba-ge-deemed/", "posts": 6, "spotlight": 0, "connections": 210, "followers": 219, "growth": null, "status": "Amber", "sessions": []}, {"month": "2025-09-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Design", "programs": "B.Des, M.Des", "hasPage": "YES", "url": "https://www.linkedin.com/company/design-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 101, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-10-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Design", "programs": "B.Des, M.Des", "hasPage": "YES", "url": "https://www.linkedin.com/company/design-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 109, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-11-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Design", "programs": "B.Des, M.Des", "hasPage": "YES", "url": "https://www.linkedin.com/company/design-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 120, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-12-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Design", "programs": "B.Des, M.Des", "hasPage": "YES", "url": "https://www.linkedin.com/company/design-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 128, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-01-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Design", "programs": "B.Des, M.Des", "hasPage": "YES", "url": "https://www.linkedin.com/company/design-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 135, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-02-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Design", "programs": "B.Des, M.Des", "hasPage": "YES", "url": "https://www.linkedin.com/company/design-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 140, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-03-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Design", "programs": "B.Des, M.Des", "hasPage": "YES", "url": "https://www.linkedin.com/company/design-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 144, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-04-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Design", "programs": "B.Des, M.Des", "hasPage": "YES", "url": "https://www.linkedin.com/company/design-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 154, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-05-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Design", "programs": "B.Des, M.Des", "hasPage": "YES", "url": "https://www.linkedin.com/company/design-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 163, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-06-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Design", "programs": "B.Des, M.Des", "hasPage": "YES", "url": "https://www.linkedin.com/company/design-ge-deemed/", "posts": 5, "spotlight": 1, "connections": 150, "followers": 166, "growth": null, "status": "Amber", "sessions": []}, {"month": "2025-09-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Biotechnology", "programs": "B.Sc-Biotech, M.Sc-Biotech", "hasPage": "YES", "url": "https://www.linkedin.com/company/biotechnology-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 56, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-10-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Biotechnology", "programs": "B.Sc-Biotech, M.Sc-Biotech", "hasPage": "YES", "url": "https://www.linkedin.com/company/biotechnology-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 58, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-11-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Biotechnology", "programs": "B.Sc-Biotech, M.Sc-Biotech", "hasPage": "YES", "url": "https://www.linkedin.com/company/biotechnology-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 61, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-12-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Biotechnology", "programs": "B.Sc-Biotech, M.Sc-Biotech", "hasPage": "YES", "url": "https://www.linkedin.com/company/biotechnology-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 64, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-01-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Biotechnology", "programs": "B.Sc-Biotech, M.Sc-Biotech", "hasPage": "YES", "url": "https://www.linkedin.com/company/biotechnology-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 71, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-02-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Biotechnology", "programs": "B.Sc-Biotech, M.Sc-Biotech", "hasPage": "YES", "url": "https://www.linkedin.com/company/biotechnology-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 73, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-03-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Biotechnology", "programs": "B.Sc-Biotech, M.Sc-Biotech", "hasPage": "YES", "url": "https://www.linkedin.com/company/biotechnology-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 80, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-04-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Biotechnology", "programs": "B.Sc-Biotech, M.Sc-Biotech", "hasPage": "YES", "url": "https://www.linkedin.com/company/biotechnology-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 87, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-05-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Biotechnology", "programs": "B.Sc-Biotech, M.Sc-Biotech", "hasPage": "YES", "url": "https://www.linkedin.com/company/biotechnology-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 95, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-06-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Biotechnology", "programs": "B.Sc-Biotech, M.Sc-Biotech", "hasPage": "YES", "url": "https://www.linkedin.com/company/biotechnology-ge-deemed/", "posts": 3, "spotlight": 0, "connections": 90, "followers": 100, "growth": null, "status": "Amber", "sessions": []}, {"month": "2025-09-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Physiotherapy", "programs": "BPT, MPT", "hasPage": "YES", "url": "https://www.linkedin.com/company/physiotherapy-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 79, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-10-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Physiotherapy", "programs": "BPT, MPT", "hasPage": "YES", "url": "https://www.linkedin.com/company/physiotherapy-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 80, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-11-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Physiotherapy", "programs": "BPT, MPT", "hasPage": "YES", "url": "https://www.linkedin.com/company/physiotherapy-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 82, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-12-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Physiotherapy", "programs": "BPT, MPT", "hasPage": "YES", "url": "https://www.linkedin.com/company/physiotherapy-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 91, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-01-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Physiotherapy", "programs": "BPT, MPT", "hasPage": "YES", "url": "https://www.linkedin.com/company/physiotherapy-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 96, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-02-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Physiotherapy", "programs": "BPT, MPT", "hasPage": "YES", "url": "https://www.linkedin.com/company/physiotherapy-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 102, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-03-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Physiotherapy", "programs": "BPT, MPT", "hasPage": "YES", "url": "https://www.linkedin.com/company/physiotherapy-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 104, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-04-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Physiotherapy", "programs": "BPT, MPT", "hasPage": "YES", "url": "https://www.linkedin.com/company/physiotherapy-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 109, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-05-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Physiotherapy", "programs": "BPT, MPT", "hasPage": "YES", "url": "https://www.linkedin.com/company/physiotherapy-ge-deemed/", "posts": null, "spotlight": null, "connections": null, "followers": 116, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-06-01", "campus": "Graphic Era (Deemed to be University), Dehradun", "department": "Physiotherapy", "programs": "BPT, MPT", "hasPage": "YES", "url": "https://www.linkedin.com/company/physiotherapy-ge-deemed/", "posts": 4, "spotlight": 0, "connections": 115, "followers": 119, "growth": null, "status": "Amber", "sessions": []}, {"month": "2025-09-01", "campus": "GEHU - Dehradun", "department": "Biotechnology", "programs": "B.Sc-Biotech, M.Sc-Biotech", "hasPage": "YES", "url": "https://www.linkedin.com/company/biotech-gehu-dehradun/", "posts": null, "spotlight": null, "connections": null, "followers": 53, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-10-01", "campus": "GEHU - Dehradun", "department": "Biotechnology", "programs": "B.Sc-Biotech, M.Sc-Biotech", "hasPage": "YES", "url": "https://www.linkedin.com/company/biotech-gehu-dehradun/", "posts": null, "spotlight": null, "connections": null, "followers": 54, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-11-01", "campus": "GEHU - Dehradun", "department": "Biotechnology", "programs": "B.Sc-Biotech, M.Sc-Biotech", "hasPage": "YES", "url": "https://www.linkedin.com/company/biotech-gehu-dehradun/", "posts": null, "spotlight": null, "connections": null, "followers": 59, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-12-01", "campus": "GEHU - Dehradun", "department": "Biotechnology", "programs": "B.Sc-Biotech, M.Sc-Biotech", "hasPage": "YES", "url": "https://www.linkedin.com/company/biotech-gehu-dehradun/", "posts": null, "spotlight": null, "connections": null, "followers": 68, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-01-01", "campus": "GEHU - Dehradun", "department": "Biotechnology", "programs": "B.Sc-Biotech, M.Sc-Biotech", "hasPage": "YES", "url": "https://www.linkedin.com/company/biotech-gehu-dehradun/", "posts": null, "spotlight": null, "connections": null, "followers": 71, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-02-01", "campus": "GEHU - Dehradun", "department": "Biotechnology", "programs": "B.Sc-Biotech, M.Sc-Biotech", "hasPage": "YES", "url": "https://www.linkedin.com/company/biotech-gehu-dehradun/", "posts": null, "spotlight": null, "connections": null, "followers": 80, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-03-01", "campus": "GEHU - Dehradun", "department": "Biotechnology", "programs": "B.Sc-Biotech, M.Sc-Biotech", "hasPage": "YES", "url": "https://www.linkedin.com/company/biotech-gehu-dehradun/", "posts": null, "spotlight": null, "connections": null, "followers": 82, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-04-01", "campus": "GEHU - Dehradun", "department": "Biotechnology", "programs": "B.Sc-Biotech, M.Sc-Biotech", "hasPage": "YES", "url": "https://www.linkedin.com/company/biotech-gehu-dehradun/", "posts": null, "spotlight": null, "connections": null, "followers": 87, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-05-01", "campus": "GEHU - Dehradun", "department": "Biotechnology", "programs": "B.Sc-Biotech, M.Sc-Biotech", "hasPage": "YES", "url": "https://www.linkedin.com/company/biotech-gehu-dehradun/", "posts": null, "spotlight": null, "connections": null, "followers": 96, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-06-01", "campus": "GEHU - Dehradun", "department": "Biotechnology", "programs": "B.Sc-Biotech, M.Sc-Biotech", "hasPage": "YES", "url": "https://www.linkedin.com/company/biotech-gehu-dehradun/", "posts": 4, "spotlight": 0, "connections": 70, "followers": 100, "growth": null, "status": "Amber", "sessions": []}, {"month": "2025-09-01", "campus": "GEHU - Dehradun", "department": "Journalism (Digital Media)", "programs": "BAJMC-Digital", "hasPage": "YES", "url": "https://www.linkedin.com/company/digital-media-gehu-dehradun/", "posts": null, "spotlight": null, "connections": null, "followers": 64, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-10-01", "campus": "GEHU - Dehradun", "department": "Journalism (Digital Media)", "programs": "BAJMC-Digital", "hasPage": "YES", "url": "https://www.linkedin.com/company/digital-media-gehu-dehradun/", "posts": null, "spotlight": null, "connections": null, "followers": 71, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-11-01", "campus": "GEHU - Dehradun", "department": "Journalism (Digital Media)", "programs": "BAJMC-Digital", "hasPage": "YES", "url": "https://www.linkedin.com/company/digital-media-gehu-dehradun/", "posts": null, "spotlight": null, "connections": null, "followers": 75, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-12-01", "campus": "GEHU - Dehradun", "department": "Journalism (Digital Media)", "programs": "BAJMC-Digital", "hasPage": "YES", "url": "https://www.linkedin.com/company/digital-media-gehu-dehradun/", "posts": null, "spotlight": null, "connections": null, "followers": 85, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-01-01", "campus": "GEHU - Dehradun", "department": "Journalism (Digital Media)", "programs": "BAJMC-Digital", "hasPage": "YES", "url": "https://www.linkedin.com/company/digital-media-gehu-dehradun/", "posts": null, "spotlight": null, "connections": null, "followers": 95, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-02-01", "campus": "GEHU - Dehradun", "department": "Journalism (Digital Media)", "programs": "BAJMC-Digital", "hasPage": "YES", "url": "https://www.linkedin.com/company/digital-media-gehu-dehradun/", "posts": null, "spotlight": null, "connections": null, "followers": 97, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-03-01", "campus": "GEHU - Dehradun", "department": "Journalism (Digital Media)", "programs": "BAJMC-Digital", "hasPage": "YES", "url": "https://www.linkedin.com/company/digital-media-gehu-dehradun/", "posts": null, "spotlight": null, "connections": null, "followers": 108, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-04-01", "campus": "GEHU - Dehradun", "department": "Journalism (Digital Media)", "programs": "BAJMC-Digital", "hasPage": "YES", "url": "https://www.linkedin.com/company/digital-media-gehu-dehradun/", "posts": null, "spotlight": null, "connections": null, "followers": 115, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-05-01", "campus": "GEHU - Dehradun", "department": "Journalism (Digital Media)", "programs": "BAJMC-Digital", "hasPage": "YES", "url": "https://www.linkedin.com/company/digital-media-gehu-dehradun/", "posts": null, "spotlight": null, "connections": null, "followers": 124, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-06-01", "campus": "GEHU - Dehradun", "department": "Journalism (Digital Media)", "programs": "BAJMC-Digital", "hasPage": "YES", "url": "https://www.linkedin.com/company/digital-media-gehu-dehradun/", "posts": 6, "spotlight": 1, "connections": 95, "followers": 126, "growth": null, "status": "Amber", "sessions": []}, {"month": "2025-09-01", "campus": "GEHU - Haldwani", "department": "Applied Sciences", "programs": "B.Sc. Maths, B.Sc. Physics", "hasPage": "YES", "url": "https://www.linkedin.com/company/applied-sciences-gehu-haldwani/", "posts": null, "spotlight": null, "connections": null, "followers": 52, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-10-01", "campus": "GEHU - Haldwani", "department": "Applied Sciences", "programs": "B.Sc. Maths, B.Sc. Physics", "hasPage": "YES", "url": "https://www.linkedin.com/company/applied-sciences-gehu-haldwani/", "posts": null, "spotlight": null, "connections": null, "followers": 58, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-11-01", "campus": "GEHU - Haldwani", "department": "Applied Sciences", "programs": "B.Sc. Maths, B.Sc. Physics", "hasPage": "YES", "url": "https://www.linkedin.com/company/applied-sciences-gehu-haldwani/", "posts": null, "spotlight": null, "connections": null, "followers": 63, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-12-01", "campus": "GEHU - Haldwani", "department": "Applied Sciences", "programs": "B.Sc. Maths, B.Sc. Physics", "hasPage": "YES", "url": "https://www.linkedin.com/company/applied-sciences-gehu-haldwani/", "posts": null, "spotlight": null, "connections": null, "followers": 67, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-01-01", "campus": "GEHU - Haldwani", "department": "Applied Sciences", "programs": "B.Sc. Maths, B.Sc. Physics", "hasPage": "YES", "url": "https://www.linkedin.com/company/applied-sciences-gehu-haldwani/", "posts": null, "spotlight": null, "connections": null, "followers": 68, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-02-01", "campus": "GEHU - Haldwani", "department": "Applied Sciences", "programs": "B.Sc. Maths, B.Sc. Physics", "hasPage": "YES", "url": "https://www.linkedin.com/company/applied-sciences-gehu-haldwani/", "posts": null, "spotlight": null, "connections": null, "followers": 72, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-03-01", "campus": "GEHU - Haldwani", "department": "Applied Sciences", "programs": "B.Sc. Maths, B.Sc. Physics", "hasPage": "YES", "url": "https://www.linkedin.com/company/applied-sciences-gehu-haldwani/", "posts": null, "spotlight": null, "connections": null, "followers": 74, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-04-01", "campus": "GEHU - Haldwani", "department": "Applied Sciences", "programs": "B.Sc. Maths, B.Sc. Physics", "hasPage": "YES", "url": "https://www.linkedin.com/company/applied-sciences-gehu-haldwani/", "posts": null, "spotlight": null, "connections": null, "followers": 76, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-05-01", "campus": "GEHU - Haldwani", "department": "Applied Sciences", "programs": "B.Sc. Maths, B.Sc. Physics", "hasPage": "YES", "url": "https://www.linkedin.com/company/applied-sciences-gehu-haldwani/", "posts": null, "spotlight": null, "connections": null, "followers": 84, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-06-01", "campus": "GEHU - Haldwani", "department": "Applied Sciences", "programs": "B.Sc. Maths, B.Sc. Physics", "hasPage": "YES", "url": "https://www.linkedin.com/company/applied-sciences-gehu-haldwani/", "posts": 3, "spotlight": 0, "connections": 80, "followers": 86, "growth": null, "status": "Amber", "sessions": []}, {"month": "2025-09-01", "campus": "GEHU - Haldwani", "department": "Civil", "programs": "B.Tech-CE", "hasPage": "YES", "url": "https://www.linkedin.com/company/civil-gehu-haldwani/", "posts": null, "spotlight": null, "connections": null, "followers": 75, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-10-01", "campus": "GEHU - Haldwani", "department": "Civil", "programs": "B.Tech-CE", "hasPage": "YES", "url": "https://www.linkedin.com/company/civil-gehu-haldwani/", "posts": null, "spotlight": null, "connections": null, "followers": 79, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-11-01", "campus": "GEHU - Haldwani", "department": "Civil", "programs": "B.Tech-CE", "hasPage": "YES", "url": "https://www.linkedin.com/company/civil-gehu-haldwani/", "posts": null, "spotlight": null, "connections": null, "followers": 83, "growth": null, "status": "Pending", "sessions": []}, {"month": "2025-12-01", "campus": "GEHU - Haldwani", "department": "Civil", "programs": "B.Tech-CE", "hasPage": "YES", "url": "https://www.linkedin.com/company/civil-gehu-haldwani/", "posts": null, "spotlight": null, "connections": null, "followers": 92, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-01-01", "campus": "GEHU - Haldwani", "department": "Civil", "programs": "B.Tech-CE", "hasPage": "YES", "url": "https://www.linkedin.com/company/civil-gehu-haldwani/", "posts": null, "spotlight": null, "connections": null, "followers": 102, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-02-01", "campus": "GEHU - Haldwani", "department": "Civil", "programs": "B.Tech-CE", "hasPage": "YES", "url": "https://www.linkedin.com/company/civil-gehu-haldwani/", "posts": null, "spotlight": null, "connections": null, "followers": 106, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-03-01", "campus": "GEHU - Haldwani", "department": "Civil", "programs": "B.Tech-CE", "hasPage": "YES", "url": "https://www.linkedin.com/company/civil-gehu-haldwani/", "posts": null, "spotlight": null, "connections": null, "followers": 112, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-04-01", "campus": "GEHU - Haldwani", "department": "Civil", "programs": "B.Tech-CE", "hasPage": "YES", "url": "https://www.linkedin.com/company/civil-gehu-haldwani/", "posts": null, "spotlight": null, "connections": null, "followers": 122, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-05-01", "campus": "GEHU - Haldwani", "department": "Civil", "programs": "B.Tech-CE", "hasPage": "YES", "url": "https://www.linkedin.com/company/civil-gehu-haldwani/", "posts": null, "spotlight": null, "connections": null, "followers": 130, "growth": null, "status": "Pending", "sessions": []}, {"month": "2026-06-01", "campus": "GEHU - Haldwani", "department": "Civil", "programs": "B.Tech-CE", "hasPage": "YES", "url": "https://www.linkedin.com/company/civil-gehu-haldwani/", "posts": 4, "spotlight": 0, "connections": 105, "followers": 135, "growth": null, "status": "Amber", "sessions": []}]</script>
+<script>
+if(typeof Chart !== "undefined"){ Chart.defaults.devicePixelRatio = 2; Chart.defaults.font.family = "'Inter',sans-serif"; }
+const RECORDS_KEY = "gehu_linkedin_records_v1";
+const META_KEY = "gehu_linkedin_meta_v1";
+
+const BASE_CAMPUSES = ["Graphic Era (Deemed to be University), Dehradun","GEHU - Dehradun","GEHU - Bhimtal","GEHU - Haldwani"];
+const BASE_COLORS = {
+  "Graphic Era (Deemed to be University), Dehradun":"#C8932B",
+  "GEHU - Dehradun":"#2F6F5E",
+  "GEHU - Bhimtal":"#8B98A9",
+  "GEHU - Haldwani":"#B0703F"
+};
+const FALLBACK_PALETTE = ["#6C5CE7","#00A896","#E17055","#0984E3","#D63384","#6F4E37"];
+
+let rawData = [];
+let selectedMonth = null;
+let activeDeptFilter = "All";
+let activeUCFilter = "Consolidated";
+let ucSearchTerm = "";
+let activeCourseFilter = "All";
+let currentPage = "dashboard"; // "dashboard" or a campus name
+let editingKey = null;
+let campusChartInstance, trendChartInstance, donutChartInstance, courseChartInstance;
+let campusReportChartInstance;
+let campusReportMonth = null;
+let campusReportRange = "1";
+let currentSessions = [];
+let sessionIdCounter = 0;
+const PLACEHOLDER_AVATAR = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><rect width="40" height="40" rx="8" fill="#EEF1F6"/><circle cx="20" cy="15" r="6" fill="#C7CEDD"/><rect x="8" y="24" width="24" height="12" rx="6" fill="#C7CEDD"/></svg>');
+function escAttr(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+
+/* ================= storage ================= */
+/* Shared persistence only works when this page is running as a live Claude
+   artifact. If window.storage is missing, or a call hangs/fails, fall back
+   to an in-memory, this-device-only mode instead of hanging forever. */
+
+let storageAvailable = (typeof window.storage !== "undefined");
+
+function withTimeout(promise, ms){
+  return new Promise((resolve, reject)=>{
+    const t = setTimeout(()=>reject(new Error("storage timeout")), ms);
+    Promise.resolve(promise).then(
+      v=>{ clearTimeout(t); resolve(v); },
+      e=>{ clearTimeout(t); reject(e); }
+    );
+  });
+}
+
+async function loadRecords(){
+  if(!storageAvailable) return null;
+  try{
+    const res = await withTimeout(window.storage.get(RECORDS_KEY, true), 4000);
+    if(res && res.value) return JSON.parse(res.value);
+    return null;
+  }catch(err){
+    storageAvailable = false;
+    return null;
+  }
+}
+
+async function persist(actionLabel){
+  if(!storageAvailable){
+    updateLivePill(null);
+    return false;
+  }
+  try{
+    await withTimeout(window.storage.set(RECORDS_KEY, JSON.stringify(rawData), true), 4000);
+    const meta = {updatedAt: new Date().toISOString(), action: actionLabel||"Updated"};
+    await withTimeout(window.storage.set(META_KEY, JSON.stringify(meta), true), 4000);
+    updateLivePill(meta);
+    return true;
+  }catch(err){
+    console.error(err);
+    storageAvailable = false;
+    updateLivePill(null);
+    return false;
+  }
+}
+
+async function loadMeta(){
+  if(!storageAvailable) return null;
+  try{
+    const res = await withTimeout(window.storage.get(META_KEY, true), 4000);
+    if(res && res.value) return JSON.parse(res.value);
+  }catch(err){
+    storageAvailable = false;
+  }
+  return null;
+}
+
+function updateLivePill(meta){
+  const el = document.getElementById('livePillText');
+  const dot = document.querySelector('#livePill .live-dot');
+  const footerEl = document.getElementById('footerUpdated');
+  if(!storageAvailable){
+    el.textContent = "Local preview — not saved for others";
+    if(dot) dot.style.background = "#C7CDD8";
+    footerEl.textContent = "Open this as a live artifact in Claude to enable shared saving.";
+    return;
+  }
+  if(dot) dot.style.background = "";
+  if(meta && meta.updatedAt){
+    const d = new Date(meta.updatedAt);
+    const label = d.toLocaleDateString('en-IN',{day:'numeric',month:'short'}) + " · " + d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+    el.textContent = "Live · updated " + label;
+    footerEl.textContent = "Last updated " + label + ".";
+  } else {
+    el.textContent = "Shared live dataset";
+    footerEl.textContent = "";
+  }
+}
+
+/* ================= helpers ================= */
+
+function parseConn(v){
+  if(v===null || v===undefined || v==="") return 0;
+  if(typeof v === "number") return v;
+  const m = String(v).match(/\d+/);
+  return m ? parseInt(m[0],10) : 0;
+}
+function fmt(n){ return Number(n||0).toLocaleString('en-IN'); }
+function monthLabel(d){
+  const dt = new Date(d+"T00:00:00");
+  return dt.toLocaleDateString('en-US',{month:'short',year:'2-digit'});
+}
+function statusClass(s){
+  if(!s) return "status-Pending";
+  return "status-"+s.replace(/\s+/g,'');
+}
+function medalClass(rank){ return rank===1?"gold":rank===2?"silver":rank===3?"bronze":""; }
+
+function getCampusList(data){
+  const extra = Array.from(new Set(data.map(r=>r.campus))).filter(c=>c && !BASE_CAMPUSES.includes(c)).sort();
+  return [...BASE_CAMPUSES, ...extra];
+}
+function getCampusColor(campus, list){
+  if(BASE_COLORS[campus]) return BASE_COLORS[campus];
+  const idx = list.indexOf(campus) - BASE_CAMPUSES.length;
+  return FALLBACK_PALETTE[Math.max(0,idx) % FALLBACK_PALETTE.length];
+}
+
+function splitPrograms(str){
+  if(!str) return [];
+  return String(str).split(',').map(s=>s.trim()).filter(Boolean);
+}
+
+function recomputeGrowth(data){
+  const groups = {};
+  data.forEach(r=>{
+    const key = r.campus+"|||"+r.department;
+    (groups[key] = groups[key]||[]).push(r);
+  });
+  Object.values(groups).forEach(list=>{
+    list.sort((a,b)=>a.month.localeCompare(b.month));
+    list.forEach((r,i)=>{
+      if(i===0){ r.growth = null; }
+      else{ r.growth = (r.followers||0) - (list[i-1].followers||0); }
+    });
+  });
+  return data;
+}
+
+function allMonths(data){
+  return Array.from(new Set(data.map(r=>r.month))).sort();
+}
+
+/* ================= aggregation ================= */
+
+function aggregateCampuses(data, month, campusList){
+  return campusList.map(campus=>{
+    const rows = data.filter(r=>r.campus===campus && r.month===month);
+    const followers = rows.reduce((s,r)=>s+(r.followers||0),0);
+    const connections = rows.reduce((s,r)=>s+parseConn(r.connections),0);
+    const posts = rows.reduce((s,r)=>s+(r.posts||0),0);
+    return {campus, deptCount: rows.length, followers, connections, posts, reporting: rows.length>0};
+  });
+}
+
+function rankByFollowers(list){
+  const reporting = list.filter(x=>x.reporting).sort((a,b)=>b.followers-a.followers);
+  const notReporting = list.filter(x=>!x.reporting);
+  reporting.forEach((x,i)=>x.rank=i+1);
+  return {reporting, notReporting};
+}
+
+function allDeptRows(data, month, campusFilter){
+  let rows = data.filter(r=>r.month===month);
+  if(campusFilter && campusFilter!=="All") rows = rows.filter(r=>r.campus===campusFilter);
+  return rows.slice().sort((a,b)=>(b.followers||0)-(a.followers||0));
+}
+
+function computeDeptLeaders(data, month, campusList){
+  return campusList.map(campus=>{
+    const rows = data.filter(r=>r.campus===campus && r.month===month);
+    if(rows.length===0) return {campus, none:true};
+    const top = rows.slice().sort((a,b)=>(b.followers||0)-(a.followers||0))[0];
+    return {campus, department:top.department, followers:top.followers, posts:top.posts, status:top.status};
+  });
+}
+
+function aggregateCourses(data, month, campusFilter){
+  let rows = data.filter(r=>r.month===month);
+  if(campusFilter && campusFilter!=="All") rows = rows.filter(r=>r.campus===campusFilter);
+  const map = {};
+  rows.forEach(r=>{
+    /* If a department hasn't listed its Programs/Courses yet (the field is
+       optional on the entry form), fall back to the department name itself
+       so it still shows up here instead of silently vanishing from the
+       leaderboard. */
+    const courses = splitPrograms(r.programs);
+    const list = courses.length ? courses : [r.department + " (no programs listed)"];
+    list.forEach(course=>{
+      if(!map[course]) map[course] = {course, followers:0, posts:0, depts:new Set()};
+      map[course].followers += (r.followers||0);
+      map[course].posts += (r.posts||0);
+      map[course].depts.add(r.department+" · "+r.campus);
+    });
+  });
+  return Object.values(map).map(c=>({course:c.course, followers:c.followers, posts:c.posts, deptCount:c.depts.size}))
+    .sort((a,b)=>b.followers-a.followers);
+}
+
+/* ================= report period (look-back ranges) ================= */
+
+function getRangeMonths(months, endMonth, range){
+  // months: sorted ascending array of all months with data.
+  // range: "1" | "2" | "6" | "12" | "all"
+  if(!months.length || !endMonth) return [];
+  const idx = months.indexOf(endMonth);
+  if(idx===-1) return [endMonth];
+  if(range==="all") return months.slice(0, idx+1);
+  const n = parseInt(range,10) || 1;
+  return months.slice(Math.max(0, idx-n+1), idx+1);
+}
+
+function rangeLabel(range){
+  return {"1":"selected month only","2":"last 2 months","6":"last 6 months","12":"last 1 year","all":"all time on record"}[range] || "selected month only";
+}
+
+function sortedFeedbackRows(campusFilter){
+  let rows = rawData.filter(r=>r.feedback && String(r.feedback).trim());
+  if(campusFilter) rows = rows.filter(r=>r.campus===campusFilter);
+  return rows.slice().sort((a,b)=>(b.month.localeCompare(a.month)) || (a.department.localeCompare(b.department)));
+}
+
+function renderFeedbackTable(){
+  const body = document.getElementById('feedbackTableBody');
+  if(!body) return;
+  const rows = sortedFeedbackRows(null);
+  body.innerHTML = rows.map(r=>`
+    <tr>
+      <td class="mono">${monthLabel(r.month)}</td>
+      <td>${r.campus}</td>
+      <td class="name-cell"><b>${r.department}</b></td>
+      <td style="white-space:pre-wrap; max-width:360px">${escAttr(r.feedback)}</td>
+      <td>${r.updatedBy||'—'}</td>
+    </tr>`).join("") || `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">No feedback or suggestions submitted yet.</td></tr>`;
+}
+
+function renderCampusFeedbackTable(campus){
+  const body = document.getElementById('campusFeedbackTableBody');
+  if(!body) return;
+  const rows = sortedFeedbackRows(campus);
+  body.innerHTML = rows.map(r=>`
+    <tr>
+      <td class="mono">${monthLabel(r.month)}</td>
+      <td class="name-cell"><b>${r.department}</b></td>
+      <td style="white-space:pre-wrap; max-width:360px">${escAttr(r.feedback)}</td>
+      <td>${r.updatedBy||'—'}</td>
+    </tr>`).join("") || `<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:20px">No feedback or suggestions submitted from this campus yet.</td></tr>`;
+}
+
+function populateCampusReportControls(campus){
+  const months = allMonths(rawData);
+  if(!campusReportMonth || !months.includes(campusReportMonth)){
+    campusReportMonth = selectedMonth || months[months.length-1] || null;
+  }
+  const monthSel = document.getElementById('campusReportMonth');
+  const rangeSel = document.getElementById('campusReportRange');
+  if(monthSel){
+    monthSel.innerHTML = months.slice().reverse().map(m=>`<option value="${m}" ${m===campusReportMonth?'selected':''}>${monthLabel(m)}</option>`).join("");
+  }
+  if(rangeSel){
+    rangeSel.value = campusReportRange;
+  }
+}
+
+function renderCampusReport(campus){
+  populateCampusReportControls(campus);
+  const months = allMonths(rawData);
+  const kpiStrip = document.getElementById('campusReportKpiStrip');
+  const tbody = document.getElementById('campusReportTableBody');
+  const monthlyBody = document.getElementById('campusReportMonthlyTableBody');
+  if(!campusReportMonth || months.length===0){
+    if(kpiStrip) kpiStrip.innerHTML = "";
+    if(tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">No data yet.</td></tr>`;
+    if(monthlyBody) monthlyBody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">No data yet.</td></tr>`;
+    return;
+  }
+
+  const rangeMonths = getRangeMonths(months, campusReportMonth, campusReportRange);
+  const startMonth = rangeMonths[0];
+  const endMonth = rangeMonths[rangeMonths.length-1];
+
+  // Departments that have ever reported for this campus within the range.
+  const deptNames = Array.from(new Set(rawData.filter(r=>r.campus===campus && rangeMonths.includes(r.month)).map(r=>r.department)));
+
+  const deptStats = deptNames.map(dept=>{
+    const startRow = rawData.find(r=>r.campus===campus && r.department===dept && r.month===startMonth);
+    const endRow = rawData.find(r=>r.campus===campus && r.department===dept && r.month===endMonth);
+    const periodRows = rawData.filter(r=>r.campus===campus && r.department===dept && rangeMonths.includes(r.month));
+    const startFollowers = startRow ? (startRow.followers||0) : null;
+    const endFollowers = endRow ? (endRow.followers||0) : null;
+    const posts = periodRows.reduce((s,r)=>s+(r.posts||0),0);
+    const sessions = periodRows.reduce((s,r)=>s+((r.sessions||[]).length),0);
+    const growth = (startFollowers!=null && endFollowers!=null) ? (endFollowers-startFollowers) : null;
+    return {dept, startFollowers, endFollowers, posts, sessions, growth};
+  }).sort((a,b)=>(b.endFollowers||0)-(a.endFollowers||0));
+
+  const totalStart = deptStats.reduce((s,d)=>s+(d.startFollowers||0),0);
+  const totalEnd = deptStats.reduce((s,d)=>s+(d.endFollowers||0),0);
+  const totalPosts = deptStats.reduce((s,d)=>s+d.posts,0);
+  const totalSessions = deptStats.reduce((s,d)=>s+d.sessions,0);
+  const totalGrowth = totalEnd - totalStart;
+  const growthPct = totalStart>0 ? ((totalGrowth/totalStart)*100).toFixed(1)+"%" : "—";
+
+  // Growth for just the most recent single month (endMonth vs the month right before it),
+  // independent of whatever look-back range is currently selected.
+  const totalFollowersForMonth = (m)=>{
+    const r2 = rawData.filter(r=>r.campus===campus && r.month===m);
+    return r2.length ? r2.reduce((s,r)=>s+(r.followers||0),0) : null;
+  };
+  const endIdx = months.indexOf(endMonth);
+  const priorMonth = endIdx>0 ? months[endIdx-1] : null;
+  const lastMonthStart = priorMonth!=null ? totalFollowersForMonth(priorMonth) : null;
+  const lastMonthEnd = totalFollowersForMonth(endMonth);
+  const lastMonthGrowth = (lastMonthStart!=null && lastMonthEnd!=null) ? (lastMonthEnd-lastMonthStart) : null;
+  const lastMonthGrowthPct = (lastMonthStart!=null && lastMonthStart>0 && lastMonthGrowth!=null) ? ((lastMonthGrowth/lastMonthStart)*100).toFixed(1)+"%" : "—";
+  const lastMonthGrowthTxt = lastMonthGrowth==null
+    ? "—"
+    : (lastMonthGrowth>=0?"▲ +":"▼ ")+fmt(Math.abs(lastMonthGrowth))+(lastMonthGrowthPct!=="—"?` (${lastMonthGrowthPct})`:"");
+
+  if(kpiStrip){
+    kpiStrip.innerHTML = [
+      ["Followers as of "+monthLabel(endMonth), fmt(totalEnd)],
+      ["Growth over period", (totalGrowth>=0?"▲ +":"▼ ")+fmt(Math.abs(totalGrowth))+(growthPct!=="—"?` (${growthPct})`:"")],
+      ["Growth over period (last month)", lastMonthGrowthTxt],
+      ["Total posts in period", fmt(totalPosts)],
+      ["Alumni sessions in period", fmt(totalSessions)],
+      ["Months covered", rangeMonths.length + " (" + monthLabel(startMonth) + (rangeMonths.length>1?" → "+monthLabel(endMonth):"") + ")"],
+    ].map(([l,v])=>`<div class="kpi-card"><p class="kpi-label">${l}</p><div class="kpi-value">${v}</div></div>`).join("");
+  }
+
+  if(tbody){
+    tbody.innerHTML = deptStats.map((d,i)=>{
+      const rank = i+1;
+      const growthTxt = d.growth==null ? "—" : (d.growth>0?`▲ +${fmt(d.growth)}`:(d.growth<0?`▼ ${fmt(d.growth)}`:"– 0"));
+      const growthClass = d.growth==null?"growth-flat":(d.growth>0?"growth-up":(d.growth<0?"growth-down":"growth-flat"));
+      return `<tr>
+        <td><span class="rank-num ${medalClass(rank)}">${rank}</span></td>
+        <td class="name-cell"><b>${d.dept}</b></td>
+        <td class="num-cell">${d.startFollowers==null?'–':fmt(d.startFollowers)}</td>
+        <td class="num-cell">${d.endFollowers==null?'–':fmt(d.endFollowers)}</td>
+        <td class="num-cell ${growthClass}">${growthTxt}</td>
+        <td class="num-cell">${fmt(d.posts)}</td>
+        <td class="num-cell">${fmt(d.sessions)}</td>
+      </tr>`;
+    }).join("") || `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">No departments reported for this campus in this period.</td></tr>`;
+  }
+
+  // Month-by-month table for total campus followers across the range (a simple, always-visible trend view).
+  if(monthlyBody){
+    let prevTotal = null;
+    const monthRows = rangeMonths.map(m=>{
+      const r2 = rawData.filter(r=>r.campus===campus && r.month===m);
+      const total = r2.length ? r2.reduce((s,r)=>s+(r.followers||0),0) : null;
+      const posts = r2.reduce((s,r)=>s+(r.posts||0),0);
+      const sessions = r2.reduce((s,r)=>s+((r.sessions||[]).length),0);
+      const growth = (prevTotal!=null && total!=null) ? (total-prevTotal) : null;
+      prevTotal = total!=null ? total : prevTotal;
+      return {m, total, posts, sessions, growth};
+    });
+    monthlyBody.innerHTML = monthRows.map(r=>{
+      const growthTxt = r.growth==null ? "—" : (r.growth>0?`▲ +${fmt(r.growth)}`:(r.growth<0?`▼ ${fmt(Math.abs(r.growth))}`:"– 0"));
+      const growthClass = r.growth==null?"growth-flat":(r.growth>0?"growth-up":(r.growth<0?"growth-down":"growth-flat"));
+      return `<tr>
+        <td class="mono">${monthLabel(r.m)}</td>
+        <td class="num-cell">${r.total==null?'–':fmt(r.total)}</td>
+        <td class="num-cell">${fmt(r.posts)}</td>
+        <td class="num-cell">${fmt(r.sessions)}</td>
+        <td class="num-cell ${growthClass}">${growthTxt}</td>
+      </tr>`;
+    }).join("") || `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">No monthly history for this campus yet.</td></tr>`;
+  }
+}
+
+
+
+function ensureSelectedMonth(){
+  const months = allMonths(rawData);
+  if(months.length===0){ selectedMonth = null; return; }
+  if(!selectedMonth || !months.includes(selectedMonth)){
+    selectedMonth = months[months.length-1];
+  }
+}
+
+function populateMonthSelect(){
+  const months = allMonths(rawData).slice().reverse();
+  const sel = document.getElementById('monthSelect');
+  sel.innerHTML = months.map(m=>`<option value="${m}" ${m===selectedMonth?'selected':''}>${monthLabel(m)}</option>`).join("");
+  const latest = months[0];
+  const note = document.getElementById('latestNote');
+  note.innerHTML = (latest && selectedMonth!==latest) ? `Latest month with data: <b>${monthLabel(latest)}</b>` : "";
+  renderYearGrowthPill();
+}
+
+function renderYearGrowthPill(){
+  const pill = document.getElementById('yearGrowthPill');
+  if(!pill) return;
+  const months = allMonths(rawData);
+  if(months.length<2 || !selectedMonth){ pill.innerHTML = ""; return; }
+  const startMonth = months[0];
+  const sumFollowers = m => rawData.filter(r=>r.month===m).reduce((s,r)=>s+(r.followers||0),0);
+  const startTotal = sumFollowers(startMonth);
+  const currentTotal = sumFollowers(selectedMonth);
+  if(startMonth===selectedMonth || startTotal===0){ pill.innerHTML = ""; return; }
+  const diff = currentTotal - startTotal;
+  const pct = ((diff/startTotal)*100).toFixed(1);
+  const cls = diff>=0 ? "" : "down";
+  const arrow = diff>=0 ? "▲" : "▼";
+  pill.innerHTML = `Academic year growth (${monthLabel(startMonth)} → ${monthLabel(selectedMonth)}): <b class="${cls}">${arrow} ${fmt(Math.abs(diff))} (${diff>=0?'+':''}${pct}%)</b>`;
+}
+
+function renderAll(){
+  ensureSelectedMonth();
+  populateMonthSelect();
+
+  const campusList = getCampusList(rawData);
+  const podium = document.getElementById('podium');
+  const noReportArea = document.getElementById('noReportArea');
+  const emptyState = document.getElementById('emptyState');
+
+  if(!selectedMonth){
+    podium.innerHTML = ""; noReportArea.innerHTML = "";
+    document.getElementById('rankStrip').innerHTML = "";
+    emptyState.innerHTML = `<div class="empty-state">No data yet. Click <b>+ Add / Update Entry</b> above or import the tracker Excel to get started.</div>`;
+    document.getElementById('kpiStrip').innerHTML = "";
+    document.getElementById('campusTableBody').innerHTML = "";
+    document.getElementById('leaderGrid').innerHTML = "";
+    document.getElementById('deptTabs').innerHTML = "";
+    document.getElementById('ucTabs').innerHTML = "";
+    document.getElementById('deptTableBody').innerHTML = "";
+    document.getElementById('courseTableBody').innerHTML = "";
+    document.getElementById('manageTableBody').innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px">No entries yet.</td></tr>`;
+    const ucKpi = document.getElementById('ucKpiStrip'); if(ucKpi) ucKpi.innerHTML = "";
+    document.getElementById('sessionGrid').innerHTML = "";
+    document.getElementById('sessionsSectionSub').textContent = "No alumni sessions logged yet.";
+    if(campusChartInstance) campusChartInstance.destroy();
+    if(courseChartInstance) courseChartInstance.destroy();
+    if(donutChartInstance) donutChartInstance.destroy();
+    if(trendChartInstance) trendChartInstance.destroy();
+    renderPageNav([]);
+    return;
+  }
+  emptyState.innerHTML = "";
+
+  const campusAgg = aggregateCampuses(rawData, selectedMonth, campusList);
+  const {reporting, notReporting} = rankByFollowers(campusAgg);
+
+  renderPodium(reporting, notReporting);
+  renderRankStrip(reporting, notReporting);
+  renderKPIs(campusAgg);
+  renderCampusTable(reporting, notReporting);
+  renderLeaders(campusList);
+  renderDeptTabs(campusList);
+  renderDeptTable(activeDeptFilter);
+  populateCampusExportSelect(campusList);
+  populateCourseCampusFilter(campusList);
+  renderCourseTable();
+  renderUCTabs(campusList);
+  renderManageTable(activeUCFilter);
+  renderSessionsSection();
+  renderFeedbackTable();
+  renderPageNav(campusList);
+  if(currentPage !== "dashboard") renderCampusPage(currentPage);
+}
+
+function renderRankStrip(reporting, notReporting){
+  const strip = document.getElementById('rankStrip');
+  const all = [...reporting, ...notReporting];
+  strip.innerHTML = `<p class="rank-strip-label">Full ranking — all ${all.length} campuses</p>` +
+    all.map(c=>{
+      const cls = c.rank===1?'gold':c.rank===2?'silver':c.rank===3?'bronze':'';
+      return `<div class="rank-chip ${cls} ${c.reporting?'':'dim'}"><span class="num">${c.rank||'–'}</span><b>${c.campus}</b><span class="f">${c.reporting? fmt(c.followers)+' followers':'no data yet'}</span></div>`;
+    }).join("");
+}
+
+function renderLeaders(campusList){
+  const leaders = computeDeptLeaders(rawData, selectedMonth, campusList);
+  document.getElementById('leaderGrid').innerHTML = leaders.map(l=>{
+    if(l.none) return `<div class="leader-card" style="opacity:.5; border-left-color:var(--line)"><p class="campus-name">${l.campus}</p><p class="dept-name">No data yet</p></div>`;
+    return `<div class="leader-card">
+      <p class="campus-name">${l.campus}</p>
+      <p class="dept-name">${l.department}</p>
+      <div class="stat-row"><span>Followers</span><b>${fmt(l.followers)}</b></div>
+      <div class="stat-row"><span>Posts</span><b>${l.posts===null||l.posts===undefined?'–':fmt(l.posts)}</b></div>
+    </div>`;
+  }).join("");
+}
+
+function renderPodium(reporting, notReporting){
+  const podium = document.getElementById('podium');
+  podium.innerHTML = "";
+  const top3 = reporting.slice(0,3);
+  const arranged = [top3[1], top3[0], top3[2]].filter(Boolean);
+  arranged.forEach(c=>{
+    const rClass = c.rank===1?"r1":c.rank===2?"r2":"r3";
+    const div = document.createElement('div');
+    div.className = "podium-block "+rClass;
+    div.innerHTML = `
+      <div class="rank-badge">${c.rank}</div>
+      <p class="podium-campus">${c.campus}</p>
+      <div class="podium-stat">${fmt(c.followers)}</div>
+      <p class="podium-label">Total Followers</p>
+      <div class="podium-meta"><span>${c.deptCount} depts</span><span>·</span><span>${fmt(c.posts)} posts</span></div>
+    `;
+    podium.appendChild(div);
+  });
+
+  const noReportArea = document.getElementById('noReportArea');
+  noReportArea.innerHTML = "";
+  if(notReporting.length){
+    const div = document.createElement('div');
+    div.className = "no-report-row";
+    div.innerHTML = `<span><b>${notReporting.length} campus${notReporting.length>1?'es':''}</b> not yet reporting this month: ${notReporting.map(c=>c.campus).join(", ")}</span>`;
+    noReportArea.appendChild(div);
+  }
+}
+
+function renderKPIs(campusAgg){
+  const totalFollowers = campusAgg.reduce((s,c)=>s+c.followers,0);
+  const totalConn = campusAgg.reduce((s,c)=>s+c.connections,0);
+  const totalPosts = campusAgg.reduce((s,c)=>s+c.posts,0);
+  const reportingCount = campusAgg.filter(c=>c.reporting).length;
+  const sessionsCount = totalSessionsForMonth(rawData, selectedMonth);
+  const kpis = [
+    ["Total Followers", fmt(totalFollowers)],
+    ["Total Connections", fmt(totalConn)],
+    ["Direct Posts", fmt(totalPosts)],
+    ["Campuses Reporting", reportingCount+" of "+campusAgg.length],
+    ["Alumni Sessions Planned", fmt(sessionsCount)],
+  ];
+  document.getElementById('kpiStrip').innerHTML = kpis.map(([l,v])=>`<div class="kpi-card"><p class="kpi-label">${l}</p><div class="kpi-value">${v}</div></div>`).join("");
+}
+
+function renderCampusTable(reporting, notReporting){
+  const body = document.getElementById('campusTableBody');
+  let html = "";
+  reporting.forEach(c=>{
+    html += `<tr>
+      <td><span class="rank-num ${medalClass(c.rank)}">${c.rank}</span></td>
+      <td class="name-cell"><b>${c.campus}</b></td>
+      <td class="num-cell">${c.deptCount}</td>
+      <td class="num-cell">${fmt(c.posts)}</td>
+      <td class="num-cell">${fmt(c.followers)}</td>
+      <td class="num-cell">${fmt(c.connections)}</td>
+    </tr>`;
+  });
+  notReporting.forEach(c=>{
+    html += `<tr style="opacity:.55">
+      <td><span class="rank-num">–</span></td>
+      <td class="name-cell"><b>${c.campus}</b></td>
+      <td class="num-cell">0</td><td class="num-cell">0</td><td class="num-cell">0</td><td class="num-cell">0</td>
+    </tr>`;
+  });
+  body.innerHTML = html;
+}
+
+function renderDeptTabs(campusList){
+  const tabsEl = document.getElementById('deptTabs');
+  const campusesReporting = ["All", ...campusList.filter(c=>rawData.some(r=>r.campus===c && r.month===selectedMonth))];
+  if(!campusesReporting.includes(activeDeptFilter)) activeDeptFilter = "All";
+  tabsEl.innerHTML = campusesReporting.map(c=>`<button class="tab ${c===activeDeptFilter?'active':''}" data-campus="${c}">${c==="All"?"All Campuses":c}</button>`).join("");
+  tabsEl.querySelectorAll('.tab').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      activeDeptFilter = btn.getAttribute('data-campus');
+      renderDeptTabs(getCampusList(rawData));
+      renderDeptTable(activeDeptFilter);
+    });
+  });
+}
+
+function renderDeptTable(campusFilter){
+  const rows = allDeptRows(rawData, selectedMonth, campusFilter);
+  const body = document.getElementById('deptTableBody');
+  body.innerHTML = rows.map((r,i)=>{
+    const rank = i+1;
+    let growthHtml = '<span class="growth-flat">–</span>';
+    if(r.growth !== null && r.growth !== undefined){
+      if(r.growth>0) growthHtml = `<span class="growth-up">▲ ${fmt(r.growth)}</span>`;
+      else if(r.growth<0) growthHtml = `<span class="growth-down">▼ ${fmt(Math.abs(r.growth))}</span>`;
+      else growthHtml = `<span class="growth-flat">— 0</span>`;
+    }
+    return `<tr>
+      <td><span class="rank-num ${medalClass(rank)}">${rank}</span></td>
+      <td class="name-cell"><b>${r.department}</b><span>${r.campus}</span></td>
+      <td class="num-cell">${r.posts===null||r.posts===undefined?'–':fmt(r.posts)}</td>
+      <td class="num-cell">${fmt(r.followers)}</td>
+      <td class="num-cell">${growthHtml}</td>
+    </tr>`;
+  }).join("") || `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">No departments reporting for this campus / month.</td></tr>`;
+}
+
+function renderCourseTable(){
+  const courses = aggregateCourses(rawData, selectedMonth, activeCourseFilter);
+  const body = document.getElementById('courseTableBody');
+  body.innerHTML = courses.map((c,i)=>{
+    const rank = i+1;
+    return `<tr>
+      <td><span class="rank-num ${medalClass(rank)}">${rank}</span></td>
+      <td class="name-cell"><b>${c.course}</b></td>
+      <td class="num-cell">${c.deptCount} dept${c.deptCount>1?'s':''}</td>
+      <td class="num-cell">${fmt(c.posts)}</td>
+      <td class="num-cell">${fmt(c.followers)}</td>
+    </tr>`;
+  }).join("") || `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">No course data for this month yet.</td></tr>`;
+}
+
+function showChartEmptyState(canvasId, message){
+  const canvas = document.getElementById(canvasId);
+  if(!canvas) return;
+  const wrap = canvas.closest('.chart-wrap') || canvas.parentElement;
+  canvas.style.display = "none";
+  let note = wrap.querySelector('.chart-empty-note');
+  if(!note){
+    note = document.createElement('div');
+    note.className = "chart-empty-note empty-state";
+    wrap.appendChild(note);
+  }
+  note.style.display = "block";
+  note.textContent = message;
+}
+function hideChartEmptyState(canvasId){
+  const canvas = document.getElementById(canvasId);
+  if(!canvas) return;
+  const wrap = canvas.closest('.chart-wrap') || canvas.parentElement;
+  canvas.style.display = "";
+  const note = wrap.querySelector('.chart-empty-note');
+  if(note) note.style.display = "none";
+}
+
+function renderManageTable(campusFilter){
+  let rows = rawData.filter(r=>r.month===selectedMonth);
+  if(campusFilter && campusFilter!=="Consolidated") rows = rows.filter(r=>r.campus===campusFilter);
+  if(ucSearchTerm){
+    const q = ucSearchTerm.toLowerCase();
+    rows = rows.filter(r=>r.department.toLowerCase().includes(q) || r.campus.toLowerCase().includes(q));
+  }
+  rows = rows.slice().sort((a,b)=> a.campus.localeCompare(b.campus) || a.department.localeCompare(b.department));
+  const rankRows = allDeptRows(rawData, selectedMonth, null);
+  const rankMap = {};
+  rankRows.forEach((rr,i)=>{ rankMap[rr.campus+"|||"+rr.department] = i+1; });
+  const body = document.getElementById('manageTableBody');
+  body.innerHTML = rows.map(r=>`
+    <tr>
+      <td>${r.campus}</td>
+      <td class="name-cell"><b>${r.department}</b></td>
+      <td class="num-cell">${fmt(parseConn(r.connections))}</td>
+      <td class="num-cell">${fmt(r.followers)}</td>
+      <td class="num-cell">${r.posts===null||r.posts===undefined?'–':fmt(r.posts)}</td>
+      <td class="num-cell"><span class="rank-num ${medalClass(rankMap[r.campus+"|||"+r.department])}">${rankMap[r.campus+"|||"+r.department]||'–'}</span></td>
+      <td>${r.updatedBy||'—'}${r.feedback?' <span title="'+escAttr(r.feedback)+'" style="cursor:help">💬</span>':''}</td>
+      <td style="white-space:nowrap">
+        <button class="icon-btn" title="Edit" data-action="edit" data-month="${r.month}" data-campus="${encodeURIComponent(r.campus)}" data-dept="${encodeURIComponent(r.department)}">✎</button>
+        <button class="icon-btn danger" title="Delete" data-action="delete" data-month="${r.month}" data-campus="${encodeURIComponent(r.campus)}" data-dept="${encodeURIComponent(r.department)}">🗑</button>
+      </td>
+    </tr>`).join("") || `<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px">No entries match this campus / search / month.</td></tr>`;
+
+  const kpiEl = document.getElementById('ucKpiStrip');
+  if(kpiEl){
+    const totalConn = rows.reduce((s,r)=>s+parseConn(r.connections),0);
+    const totalFollowers = rows.reduce((s,r)=>s+(r.followers||0),0);
+    const totalPosts = rows.reduce((s,r)=>s+(r.posts||0),0);
+    kpiEl.innerHTML = [
+      ["Entries in this view", fmt(rows.length)],
+      ["Total Connections", fmt(totalConn)],
+      ["Total Followers", fmt(totalFollowers)],
+      ["Total Posts", fmt(totalPosts)],
+    ].map(([l,v])=>`<div class="kpi-card"><p class="kpi-label">${l}</p><div class="kpi-value">${v}</div></div>`).join("");
+  }
+}
+
+document.getElementById('ucSearch').addEventListener('input', function(){
+  ucSearchTerm = this.value.trim();
+  renderManageTable(activeUCFilter);
+});
+
+document.getElementById('ucExportBtn').addEventListener('click', function(){
+  if(typeof XLSX === "undefined"){ alert("Excel export library did not load."); return; }
+  let rows = rawData.filter(r=>r.month===selectedMonth);
+  if(activeUCFilter && activeUCFilter!=="Consolidated") rows = rows.filter(r=>r.campus===activeUCFilter);
+  if(ucSearchTerm){
+    const q = ucSearchTerm.toLowerCase();
+    rows = rows.filter(r=>r.department.toLowerCase().includes(q) || r.campus.toLowerCase().includes(q));
+  }
+  if(rows.length===0){ alert("Nothing to export in this view."); return; }
+  const ws = XLSX.utils.json_to_sheet(sortedRows(rows).map(toExportRow));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, safeSheetName(activeUCFilter));
+  XLSX.writeFile(wb, `GEHU_LinkedIn_${activeUCFilter.replace(/[^a-z0-9]+/gi,'_')}_${selectedMonth||'view'}.xlsx`);
+});
+
+function renderUCTabs(campusList){
+  const tabsEl = document.getElementById('ucTabs');
+  if(!tabsEl) return;
+  const options = ["Consolidated", ...campusList];
+  if(!options.includes(activeUCFilter)) activeUCFilter = "Consolidated";
+  tabsEl.innerHTML = options.map(c=>`<button class="tab ${c===activeUCFilter?'active':''}" data-campus="${escAttr(c)}">${c}</button>`).join("");
+  tabsEl.querySelectorAll('.tab').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      activeUCFilter = btn.getAttribute('data-campus');
+      renderUCTabs(getCampusList(rawData));
+      renderManageTable(activeUCFilter);
+    });
+  });
+}
+
+document.getElementById('manageTableBody').addEventListener('click', function(e){
+  const btn = e.target.closest('.icon-btn');
+  if(!btn) return;
+  const month = btn.getAttribute('data-month');
+  const campus = decodeURIComponent(btn.getAttribute('data-campus'));
+  const department = decodeURIComponent(btn.getAttribute('data-dept'));
+  const record = rawData.find(r=>r.month===month && r.campus===campus && r.department===department);
+  if(!record) return;
+  if(btn.getAttribute('data-action')==='edit'){
+    openEntryForm(record);
+  } else {
+    if(confirm(`Delete this entry for "${department}" (${monthLabel(month)})? This cannot be undone.`)){
+      rawData = rawData.filter(r=>!(r.month===month && r.campus===campus && r.department===department));
+      recomputeGrowth(rawData);
+      persist("Deleted "+department).then(()=>{ renderAll(); showToast("Entry deleted."); });
+    }
+  }
+});
+
+/* ================= course filter dropdown ================= */
+
+function populateCourseCampusFilter(campusList){
+  const sel = document.getElementById('courseCampusFilter');
+  if(!activeCourseFilter || (activeCourseFilter!=="All" && !campusList.includes(activeCourseFilter))) activeCourseFilter = "All";
+  sel.innerHTML = `<option value="All">All Campuses</option>` + campusList.map(c=>`<option value="${c}" ${c===activeCourseFilter?'selected':''}>${c}</option>`).join("");
+  sel.value = activeCourseFilter;
+}
+document.getElementById('courseCampusFilter').addEventListener('change', function(){
+  activeCourseFilter = this.value;
+  renderCourseTable();
+});
+
+/* ================= excel export (campus-wise + full dataset) ================= */
+
+function toExportRow(r){
+  return {
+    "Month": r.month,
+    "Campus": r.campus,
+    "Department": r.department,
+    "Programs / Courses": r.programs||"",
+    "Has LinkedIn Page": r.hasPage||"",
+    "LinkedIn URL": r.url||"",
+    "Direct Posts (This Month)": r.posts===null||r.posts===undefined?"":r.posts,
+    "Spotlight Posts": r.spotlight===null||r.spotlight===undefined?"":r.spotlight,
+    "Total Connections": r.connections===null||r.connections===undefined?"":r.connections,
+    "Total Followers": r.followers,
+    "Growth vs Prev Month": r.growth===null||r.growth===undefined?"":r.growth,
+    "Activity Status": r.status||"",
+    "Alumni Sessions Planned": (r.sessions||[]).length,
+    "Updated By": r.updatedBy||"",
+    "Feedback / Suggestions": r.feedback||""
+  };
+}
+function toSessionExportRows(rows){
+  const out = [];
+  rows.forEach(r=>{
+    (r.sessions||[]).forEach(s=>{
+      out.push({
+        "Month": r.month,
+        "Department Campus": r.campus,
+        "Department": r.department,
+        "Alumni Name": s.alumniName||"",
+        "Course": s.course||"",
+        "Alumni Campus": s.campus||"",
+        "Session Topic": s.topic||"",
+        "Date": s.date||"",
+        "Has Photo": s.photo ? "Yes" : "No"
+      });
+    });
+  });
+  return out;
+}
+function sortedRows(rows){
+  return rows.slice().sort((a,b)=> a.month.localeCompare(b.month) || a.campus.localeCompare(b.campus) || a.department.localeCompare(b.department));
+}
+function safeSheetName(name){
+  return String(name).replace(/[\\/*?:\[\]]/g,'').slice(0,31) || "Sheet";
+}
+
+function populateCampusExportSelect(campusList){
+  const sel = document.getElementById('campusExportSelect');
+  const prev = sel.value;
+  sel.innerHTML = `<option value="__all">All Campuses (one workbook)</option>` + campusList.map(c=>`<option value="${c}">${c}</option>`).join("");
+  if(prev && [...sel.options].some(o=>o.value===prev)) sel.value = prev;
+}
+
+document.getElementById('campusExportBtn').addEventListener('click', function(){
+  if(typeof XLSX === "undefined"){ alert("Excel export library did not load."); return; }
+  const val = document.getElementById('campusExportSelect').value;
+  const wb = XLSX.utils.book_new();
+  if(val === "__all"){
+    const campusList = getCampusList(rawData);
+    let anySheet = false;
+    campusList.forEach(c=>{
+      const rows = sortedRows(rawData.filter(r=>r.campus===c));
+      if(rows.length===0) return;
+      anySheet = true;
+      const ws = XLSX.utils.json_to_sheet(rows.map(toExportRow));
+      XLSX.utils.book_append_sheet(wb, ws, safeSheetName(c));
+    });
+    if(!anySheet){ alert("No data to export yet."); return; }
+    const campusAgg = aggregateCampuses(rawData, selectedMonth, campusList);
+    const {reporting, notReporting} = rankByFollowers(campusAgg);
+    const summaryRows = [...reporting, ...notReporting].map(c=>({
+      "Rank": c.rank||"—", "Campus": c.campus, "Departments Reporting": c.deptCount,
+      "Posts": c.posts, "Followers": c.followers, "Connections": c.connections,
+      "Status": c.reporting?"Submitted":"No data"
+    }));
+    const wsSummary = XLSX.utils.json_to_sheet(summaryRows);
+    XLSX.utils.book_append_sheet(wb, wsSummary, "Ranking Summary");
+    const sessionRows = toSessionExportRows(sortedRows(rawData));
+    if(sessionRows.length){
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sessionRows), "Alumni Sessions");
+    }
+    XLSX.writeFile(wb, "GEHU_LinkedIn_AllCampuses.xlsx");
+  } else {
+    const rows = sortedRows(rawData.filter(r=>r.campus===val));
+    if(rows.length===0){ alert("No data recorded for this campus yet."); return; }
+    const ws = XLSX.utils.json_to_sheet(rows.map(toExportRow));
+    XLSX.utils.book_append_sheet(wb, ws, safeSheetName(val));
+    const sessionRows = toSessionExportRows(rows);
+    if(sessionRows.length){
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sessionRows), "Alumni Sessions");
+    }
+    XLSX.writeFile(wb, `GEHU_LinkedIn_${val.replace(/[^a-z0-9]+/gi,'_')}.xlsx`);
+  }
+});
+
+document.getElementById('downloadAllExcelBtn').addEventListener('click', function(){
+  if(typeof XLSX === "undefined"){ alert("Excel export library did not load."); return; }
+  if(rawData.length===0){ alert("No data to export yet."); return; }
+  const ws = XLSX.utils.json_to_sheet(sortedRows(rawData).map(toExportRow));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "All Data");
+  const sessionRows = toSessionExportRows(sortedRows(rawData));
+  if(sessionRows.length){
+    const wsSessions = XLSX.utils.json_to_sheet(sessionRows);
+    XLSX.utils.book_append_sheet(wb, wsSessions, "Alumni Sessions");
+  }
+  XLSX.writeFile(wb, "GEHU_LinkedIn_AllData.xlsx");
+});
+
+/* ================= alumni sessions (within entry form) ================= */
+
+function renderSessionRows(){
+  const wrap = document.getElementById('sessionRows');
+  const badge = document.getElementById('sessionCountBadge');
+  if(badge) badge.textContent = `(${currentSessions.length})`;
+  if(currentSessions.length===0){
+    wrap.innerHTML = `<p class="session-empty-note">No sessions added yet — click "+ Add session" to log a planned alumni session.</p>`;
+    return;
+  }
+  wrap.innerHTML = currentSessions.map(s=>`
+    <div class="session-row" data-id="${s.id}">
+      <div class="session-row-top">
+        <img class="session-photo-preview" src="${s.photo || PLACEHOLDER_AVATAR}" alt="">
+        <label class="btn-mini-upload">Photo<input type="file" accept="image/*" class="session-photo-input" data-id="${s.id}"></label>
+        <button type="button" class="session-remove-btn" data-id="${s.id}">✕ Remove</button>
+      </div>
+      <div class="session-fields">
+        <input type="text" class="session-alumni" data-id="${s.id}" data-field="alumniName" placeholder="Alumni name" value="${escAttr(s.alumniName)}">
+        <input type="text" class="session-course" data-id="${s.id}" data-field="course" placeholder="Course" value="${escAttr(s.course)}">
+        <input type="text" class="session-campus" data-id="${s.id}" data-field="campus" placeholder="Campus" value="${escAttr(s.campus)}">
+        <input type="date" class="session-date" data-id="${s.id}" data-field="date" value="${s.date||''}">
+        <input type="text" class="session-topic" data-id="${s.id}" data-field="topic" placeholder="Session topic / focus area" style="grid-column:1/-1" value="${escAttr(s.topic)}">
+      </div>
+    </div>
+  `).join("");
+  wrap.querySelectorAll('.session-fields input').forEach(el=>{
+    el.addEventListener('input', e=>updateSessionField(e.target.dataset.id, e.target.dataset.field, e.target.value));
+  });
+  wrap.querySelectorAll('.session-remove-btn').forEach(el=>{
+    el.addEventListener('click', e=>{
+      currentSessions = currentSessions.filter(s=>String(s.id)!==e.currentTarget.dataset.id);
+      renderSessionRows();
+    });
+  });
+  wrap.querySelectorAll('.session-photo-input').forEach(el=>{
+    el.addEventListener('change', handleSessionPhoto);
+  });
+}
+function updateSessionField(id, field, value){
+  const s = currentSessions.find(s=>String(s.id)===String(id));
+  if(s) s[field] = value;
+}
+function handleSessionPhoto(e){
+  const id = e.target.dataset.id;
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(evt){
+    const img = new Image();
+    img.onload = function(){
+      const maxDim = 160;
+      let w = img.width, h = img.height;
+      if(w>h){ if(w>maxDim){ h = Math.round(h*maxDim/w); w = maxDim; } }
+      else{ if(h>maxDim){ w = Math.round(w*maxDim/h); h = maxDim; } }
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      const dataUrl = c.toDataURL('image/jpeg',0.82);
+      const s = currentSessions.find(s=>String(s.id)===String(id));
+      if(s) s.photo = dataUrl;
+      renderSessionRows();
+    };
+    img.src = evt.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+document.getElementById('addSessionBtn').addEventListener('click', ()=>{
+  currentSessions.push({
+    id: 's'+(++sessionIdCounter)+'_'+Date.now(),
+    alumniName:'', course:'', campus:(fCampus && fCampus.value==="__other" ? fCampusOther.value.trim() : (fCampus?fCampus.value:''))||'',
+    topic:'', date:'', photo:null
+  });
+  renderSessionRows();
+});
+
+function getSessionsForMonth(data, month){
+  return data.filter(r=>r.month===month).flatMap(r=>(r.sessions||[]).map(s=>({...s, department:r.department, deptCampus:r.campus})));
+}
+function totalSessionsForMonth(data, month){
+  return data.filter(r=>r.month===month).reduce((sum,r)=>sum+((r.sessions||[]).length),0);
+}
+function renderSessionsSection(){
+  const sessions = getSessionsForMonth(rawData, selectedMonth);
+  const sub = document.getElementById('sessionsSectionSub');
+  if(sub) sub.textContent = sessions.length
+    ? `${sessions.length} alumni session${sessions.length>1?'s':''} logged across ${new Set(sessions.map(s=>s.department)).size} department(s) for ${monthLabel(selectedMonth)}.`
+    : `No alumni sessions logged yet for ${monthLabel(selectedMonth)} — add them from "+ Add / Update Entry".`;
+  const grid = document.getElementById('sessionGrid');
+  if(!grid) return;
+  grid.innerHTML = sessions.map(s=>`
+    <div class="session-card">
+      <img src="${s.photo || PLACEHOLDER_AVATAR}" alt="">
+      <div class="who">
+        <b>${s.alumniName || "Alumni speaker TBC"}</b>
+        <span>${[s.course, s.campus].filter(Boolean).join(" · ")}</span>
+        ${s.topic ? `<div class="topic">${s.topic}</div>` : ""}
+        <div class="meta">${s.department}${s.date ? " · "+s.date : ""}</div>
+      </div>
+    </div>
+  `).join("") || `<div class="empty-state">No alumni sessions logged for this month yet.</div>`;
+}
+
+/* ================= page nav (Consolidated Report + per-campus pages) ================= */
+
+let campusCourseChartInstance, campusDonutChartInstance, campusTrendChartInstance;
+
+function renderPageNav(campusList){
+  const nav = document.getElementById('pageNav');
+  if(!nav) return;
+  if(currentPage !== "dashboard" && !campusList.includes(currentPage)) currentPage = "dashboard";
+  const items = [{key:"dashboard", label:"📊 Consolidated Report"}, ...campusList.map(c=>({key:c, label:c}))];
+  nav.innerHTML = items.map(i=>`<button data-page="${escAttr(i.key)}" class="${i.key===currentPage?'active':''}">${i.label}</button>`).join("");
+  nav.querySelectorAll('button').forEach(btn=>{
+    btn.addEventListener('click', ()=>showPage(btn.getAttribute('data-page')));
+  });
+}
+
+function showPage(key){
+  currentPage = key;
+  const isDashboard = key === "dashboard";
+  document.getElementById('page-dashboard').style.display = isDashboard ? "" : "none";
+  document.getElementById('page-campus').style.display = isDashboard ? "none" : "";
+  renderPageNav(getCampusList(rawData));
+  if(!isDashboard) renderCampusPage(key);
+  window.scrollTo({top:0, behavior:"instant"});
+}
+
+function renderCampusPage(campus){
+  document.getElementById('campusPageEyebrow').textContent = "Campus page";
+  document.getElementById('campusPageTitle').innerHTML = `${campus}<br><em style="color:var(--teal); font-style:normal">progress this month</em>`;
+  document.getElementById('campusAddEntryBtn').onclick = ()=>openEntryForm(null, campus);
+
+  if(!selectedMonth){
+    document.getElementById('campusKpiStrip').innerHTML = "";
+    document.getElementById('campusDeptTableBody').innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px">No data yet.</td></tr>`;
+    document.getElementById('campusCourseTableBody').innerHTML = "";
+    document.getElementById('campusManageTableBody').innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">No data yet.</td></tr>`;
+    document.getElementById('campusUcKpiStrip').innerHTML = "";
+    document.getElementById('campusSessionGrid').innerHTML = "";
+    renderCampusFeedbackTable(campus);
+    renderCampusReport(campus);
+    return;
+  }
+
+  const rows = rawData.filter(r=>r.campus===campus && r.month===selectedMonth);
+  const totalFollowers = rows.reduce((s,r)=>s+(r.followers||0),0);
+  const totalConn = rows.reduce((s,r)=>s+parseConn(r.connections),0);
+  const totalPosts = rows.reduce((s,r)=>s+(r.posts||0),0);
+  const sessionsCount = rows.reduce((s,r)=>s+((r.sessions||[]).length),0);
+  document.getElementById('campusKpiStrip').innerHTML = [
+    ["Total Followers", fmt(totalFollowers)],
+    ["Total Connections", fmt(totalConn)],
+    ["Direct Posts", fmt(totalPosts)],
+    ["Departments Reporting", fmt(rows.length)],
+    ["Alumni Sessions Planned", fmt(sessionsCount)],
+  ].map(([l,v])=>`<div class="kpi-card"><p class="kpi-label">${l}</p><div class="kpi-value">${v}</div></div>`).join("");
+
+  // Department ranking for this campus
+  const deptRows = rows.slice().sort((a,b)=>(b.followers||0)-(a.followers||0));
+  document.getElementById('campusDeptTableBody').innerHTML = deptRows.map((r,i)=>{
+    const rank = i+1;
+    const growthTxt = r.growth==null ? "—" : (r.growth>0?`▲ +${fmt(r.growth)}`:(r.growth<0?`▼ ${fmt(r.growth)}`:"– 0"));
+    const growthClass = r.growth==null?"growth-flat":(r.growth>0?"growth-up":(r.growth<0?"growth-down":"growth-flat"));
+    return `<tr>
+      <td><span class="rank-num ${medalClass(rank)}">${rank}</span></td>
+      <td class="name-cell"><b>${r.department}</b></td>
+      <td class="num-cell">${fmt(parseConn(r.connections))}</td>
+      <td class="num-cell">${fmt(r.followers)}</td>
+      <td class="num-cell">${r.posts==null?'–':fmt(r.posts)}</td>
+      <td class="num-cell ${growthClass}">${growthTxt}</td>
+    </tr>`;
+  }).join("") || `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px">No departments have reported for this campus in ${monthLabel(selectedMonth)} yet.</td></tr>`;
+
+  // Course leaderboard for this campus
+  const courses = aggregateCourses(rawData, selectedMonth, campus);
+  document.getElementById('campusCourseTableBody').innerHTML = courses.map((c,i)=>{
+    const rank = i+1;
+    return `<tr>
+      <td><span class="rank-num ${medalClass(rank)}">${rank}</span></td>
+      <td class="name-cell"><b>${c.course}</b></td>
+      <td class="num-cell">${c.deptCount} dept${c.deptCount>1?'s':''}</td>
+      <td class="num-cell">${fmt(c.posts)}</td>
+      <td class="num-cell">${fmt(c.followers)}</td>
+    </tr>`;
+  }).join("") || `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">No course data for this campus this month yet.</td></tr>`;
+
+  // Sessions for this campus
+  const sessions = getSessionsForMonth(rawData, selectedMonth).filter(s=>s.campus===campus);
+  document.getElementById('campusSessionGrid').innerHTML = sessions.map(s=>`
+    <div class="session-card">
+      <img src="${s.photo || PLACEHOLDER_AVATAR}" alt="">
+      <div class="who">
+        <b>${s.alumniName || "Alumni speaker TBC"}</b>
+        <span>${[s.course, s.campus].filter(Boolean).join(" · ")}</span>
+        ${s.topic ? `<div class="topic">${s.topic}</div>` : ""}
+        <div class="meta">${s.department}${s.date ? " · "+s.date : ""}</div>
+      </div>
+    </div>
+  `).join("") || `<div class="empty-state">No alumni sessions logged for this campus this month yet.</div>`;
+
+  // Update Center for this campus
+  const sortedDeptRows = rows.slice().sort((a,b)=>a.department.localeCompare(b.department));
+  const campusRankMap = {};
+  deptRows.forEach((rr,i)=>{ campusRankMap[rr.department] = i+1; });
+  document.getElementById('campusManageTableBody').innerHTML = sortedDeptRows.map(r=>`
+    <tr>
+      <td class="name-cell"><b>${r.department}</b></td>
+      <td class="num-cell">${fmt(parseConn(r.connections))}</td>
+      <td class="num-cell">${fmt(r.followers)}</td>
+      <td class="num-cell">${r.posts==null?'–':fmt(r.posts)}</td>
+      <td class="num-cell"><span class="rank-num ${medalClass(campusRankMap[r.department])}">${campusRankMap[r.department]||'–'}</span></td>
+      <td>${r.updatedBy||'—'}${r.feedback?' <span title="'+escAttr(r.feedback)+'" style="cursor:help">💬</span>':''}</td>
+      <td style="white-space:nowrap">
+        <button class="icon-btn" title="Edit" data-action="edit" data-month="${r.month}" data-campus="${encodeURIComponent(r.campus)}" data-dept="${encodeURIComponent(r.department)}">✎</button>
+        <button class="icon-btn danger" title="Delete" data-action="delete" data-month="${r.month}" data-campus="${encodeURIComponent(r.campus)}" data-dept="${encodeURIComponent(r.department)}">🗑</button>
+      </td>
+    </tr>`).join("") || `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">No entries for this campus this month yet.</td></tr>`;
+  document.getElementById('campusUcKpiStrip').innerHTML = [
+    ["Entries this month", fmt(rows.length)],
+    ["Total Connections", fmt(totalConn)],
+    ["Total Followers", fmt(totalFollowers)],
+    ["Total Posts", fmt(totalPosts)],
+  ].map(([l,v])=>`<div class="kpi-card"><p class="kpi-label">${l}</p><div class="kpi-value">${v}</div></div>`).join("");
+
+  renderCampusFeedbackTable(campus);
+  renderCampusReport(campus);
+}
+
+document.getElementById('campusManageTableBody').addEventListener('click', function(e){
+  const btn = e.target.closest('.icon-btn');
+  if(!btn) return;
+  const month = btn.getAttribute('data-month');
+  const campus = decodeURIComponent(btn.getAttribute('data-campus'));
+  const department = decodeURIComponent(btn.getAttribute('data-dept'));
+  const record = rawData.find(r=>r.month===month && r.campus===campus && r.department===department);
+  if(!record) return;
+  if(btn.getAttribute('data-action')==='edit'){
+    openEntryForm(record);
+  } else {
+    if(confirm(`Delete this entry for "${department}" (${monthLabel(month)})? This cannot be undone.`)){
+      rawData = rawData.filter(r=>!(r.month===month && r.campus===campus && r.department===department));
+      recomputeGrowth(rawData);
+      persist("Deleted "+department).then(()=>{ renderAll(); showToast("Entry deleted."); });
+    }
+  }
+});
+
+document.getElementById('campusReportMonth').addEventListener('change', function(){
+  campusReportMonth = this.value;
+  if(currentPage !== "dashboard") renderCampusReport(currentPage);
+});
+document.getElementById('campusReportRange').addEventListener('change', function(){
+  campusReportRange = this.value;
+  if(currentPage !== "dashboard") renderCampusReport(currentPage);
+});
+
+/* ================= entry form ================= */
+
+const entryOverlay = document.getElementById('entryOverlay');
+const entryForm = document.getElementById('entryForm');
+const fCampus = document.getElementById('f_campus');
+const fCampusOtherWrap = document.getElementById('f_campus_other_wrap');
+const fCampusOther = document.getElementById('f_campus_other');
+const fDept = document.getElementById('f_dept');
+const deptList = document.getElementById('deptList');
+
+function populateCampusSelect(preselect){
+  const list = getCampusList(rawData);
+  fCampus.innerHTML = `<option value="">Select campus…</option>` +
+    list.map(c=>`<option value="${c}">${c}</option>`).join("") +
+    `<option value="__other">+ Add new campus…</option>`;
+  if(preselect && list.includes(preselect)) fCampus.value = preselect;
+  toggleCampusOther();
+}
+function toggleCampusOther(){
+  const isOther = fCampus.value === "__other";
+  fCampusOtherWrap.style.display = isOther ? "flex" : "none";
+  fCampusOther.required = isOther;
+}
+fCampus.addEventListener('change', ()=>{ toggleCampusOther(); updateDeptList(); });
+
+function updateDeptList(){
+  const campus = fCampus.value==="__other" ? fCampusOther.value : fCampus.value;
+  const depts = Array.from(new Set(rawData.filter(r=>r.campus===campus).map(r=>r.department))).sort();
+  deptList.innerHTML = depts.map(d=>`<option value="${d}"></option>`).join("");
+}
+
+function openEntryForm(record, presetCampus){
+  entryForm.reset();
+  currentSessions = (record && record.sessions) ? JSON.parse(JSON.stringify(record.sessions)) : [];
+  renderSessionRows();
+  document.getElementById('deleteEntryBtn').style.display = record ? "inline-flex" : "none";
+  if(record){
+    editingKey = {month:record.month, campus:record.campus, department:record.department};
+    document.getElementById('entryFormTitle').textContent = "Edit entry";
+    populateCampusSelect(record.campus);
+    document.getElementById('f_month').value = record.month.slice(0,7);
+    fDept.value = record.department;
+    document.getElementById('f_programs').value = record.programs||"";
+    document.getElementById('f_haspage').value = record.hasPage||"YES";
+    document.getElementById('f_status').value = record.status||"Pending";
+    document.getElementById('f_url').value = record.url||"";
+    document.getElementById('f_posts').value = record.posts===null||record.posts===undefined?"":record.posts;
+    document.getElementById('f_spotlight').value = record.spotlight===null||record.spotlight===undefined?"":record.spotlight;
+    document.getElementById('f_connections').value = record.connections===null||record.connections===undefined?"":record.connections;
+    document.getElementById('f_followers').value = record.followers||0;
+    document.getElementById('f_updatedby').value = record.updatedBy||"";
+    document.getElementById('f_feedback').value = record.feedback||"";
+  } else {
+    editingKey = null;
+    document.getElementById('entryFormTitle').textContent = "Add / update monthly entry";
+    populateCampusSelect(presetCampus||null);
+    document.getElementById('f_month').value = selectedMonth ? selectedMonth.slice(0,7) : new Date().toISOString().slice(0,7);
+    document.getElementById('f_status').value = "Pending";
+    document.getElementById('f_haspage').value = "YES";
+    document.getElementById('f_feedback').value = "";
+  }
+  updateDeptList();
+  entryOverlay.classList.add('open');
+}
+function closeEntryForm(){
+  entryOverlay.classList.remove('open');
+  editingKey = null;
+  currentSessions = [];
+}
+document.getElementById('addEntryBtn').addEventListener('click', ()=>openEntryForm(null));
+document.getElementById('closeEntry').addEventListener('click', closeEntryForm);
+document.getElementById('cancelEntry').addEventListener('click', closeEntryForm);
+entryOverlay.addEventListener('click', (e)=>{ if(e.target===entryOverlay) closeEntryForm(); });
+document.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && entryOverlay.classList.contains('open')) closeEntryForm(); });
+
+document.getElementById('deleteEntryBtn').addEventListener('click', ()=>{
+  if(!editingKey) return;
+  if(confirm(`Delete this entry for "${editingKey.department}" (${monthLabel(editingKey.month)})? This cannot be undone.`)){
+    rawData = rawData.filter(r=>!(r.month===editingKey.month && r.campus===editingKey.campus && r.department===editingKey.department));
+    recomputeGrowth(rawData);
+    persist("Deleted "+editingKey.department).then(()=>{ closeEntryForm(); renderAll(); showToast("Entry deleted."); });
+  }
+});
+
+entryForm.addEventListener('submit', async function(e){
+  e.preventDefault();
+  const campusVal = fCampus.value === "__other" ? fCampusOther.value.trim() : fCampus.value;
+  if(!campusVal){ alert("Please choose or enter a campus."); return; }
+  const monthInput = document.getElementById('f_month').value;
+  if(!monthInput){ alert("Please choose a month."); return; }
+  const deptVal = fDept.value.trim();
+  if(!deptVal){ alert("Please enter a department name."); return; }
+
+  const postsVal = document.getElementById('f_posts').value;
+  const spotlightVal = document.getElementById('f_spotlight').value;
+  const connVal = document.getElementById('f_connections').value.trim();
+  const followersVal = document.getElementById('f_followers').value;
+
+  const rec = {
+    month: monthInput+"-01",
+    campus: campusVal,
+    department: deptVal,
+    programs: document.getElementById('f_programs').value.trim(),
+    hasPage: document.getElementById('f_haspage').value,
+    url: document.getElementById('f_url').value.trim() || null,
+    posts: postsVal===""? null : parseInt(postsVal,10),
+    spotlight: spotlightVal===""? null : parseInt(spotlightVal,10),
+    connections: connVal==="" ? null : (isNaN(connVal) ? connVal : parseInt(connVal,10)),
+    followers: followersVal===""? 0 : parseInt(followersVal,10),
+    status: document.getElementById('f_status').value,
+    updatedBy: document.getElementById('f_updatedby').value.trim() || null,
+    feedback: document.getElementById('f_feedback').value.trim() || null,
+    updatedAt: new Date().toISOString(),
+    sessions: currentSessions.filter(s=>s.alumniName || s.course || s.topic || s.campus).map(s=>({
+      id:s.id, alumniName:s.alumniName||"", course:s.course||"", campus:s.campus||"",
+      topic:s.topic||"", date:s.date||"", photo:s.photo||null
+    }))
+  };
+
+  const matchKey = editingKey || {month:rec.month, campus:rec.campus, department:rec.department};
+  rawData = rawData.filter(r=>!(r.month===matchKey.month && r.campus===matchKey.campus && r.department===matchKey.department));
+  rawData.push(rec);
+  recomputeGrowth(rawData);
+
+  document.getElementById('saveEntryBtn').textContent = "Saving…";
+  const ok = await persist((editingKey?"Updated ":"Added ")+deptVal);
+  document.getElementById('saveEntryBtn').textContent = "Save entry";
+  selectedMonth = rec.month;
+  closeEntryForm();
+  renderAll();
+  showToast(ok ? "Entry saved ✓" : "Saved on this device (not connected to shared storage).");
+});
+
+/* ================= toast ================= */
+let toastTimer;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 3200);
+}
+
+/* ================= month select / print ================= */
+document.getElementById('monthSelect').addEventListener('change', function(){
+  selectedMonth = this.value;
+  renderAll();
+});
+document.getElementById('printBtn').addEventListener('click', generatePDFReport);
+
+/* ================= PDF report (fixes clipped tables / missing sections) ================= */
+async function generatePDFReport(){
+  if(typeof html2canvas === "undefined" || typeof window.jspdf === "undefined"){
+    alert("PDF export libraries did not load — check your connection and try again.");
+    return;
+  }
+  const btn = document.getElementById('printBtn');
+  const originalLabel = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Preparing PDF…";
+  showToast("Rendering full report — this can take a few seconds…");
+
+  const target = document.querySelector('.wrap');
+  document.body.classList.add('pdf-export-mode');
+  // let layout/reflow (grid collapse, overflow:visible) settle before capture
+  await new Promise(r=>setTimeout(r, 120));
+
+  try{
+    const canvas = await html2canvas(target, {
+      scale: 2,
+      backgroundColor: '#EAEEF5',
+      useCORS: true,
+      windowWidth: target.scrollWidth,
+      scrollX: 0,
+      scrollY: 0
+    });
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'pt', 'a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const marginX = 26;
+    const headerH = 56;
+    const footerH = 26;
+    const usableWidth = pageWidth - marginX * 2;
+    const usableHeightPerPage = pageHeight - headerH - footerH;
+
+    const pxToPt = usableWidth / canvas.width;
+    const sliceHeightPx = Math.floor(usableHeightPerPage / pxToPt);
+    const totalPages = Math.max(1, Math.ceil(canvas.height / sliceHeightPx));
+    const monthText = selectedMonth ? monthLabel(selectedMonth) : "All months";
+
+    for(let i=0; i<totalPages; i++){
+      if(i>0) pdf.addPage();
+      const sy = i * sliceHeightPx;
+      const sh = Math.min(sliceHeightPx, canvas.height - sy);
+
+      const pageCanvas = document.createElement('canvas');
+      pageCanvas.width = canvas.width;
+      pageCanvas.height = sh;
+      const ctx = pageCanvas.getContext('2d');
+      ctx.fillStyle = '#EAEEF5';
+      ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+      ctx.drawImage(canvas, 0, sy, canvas.width, sh, 0, 0, canvas.width, sh);
+      const imgData = pageCanvas.toDataURL('image/jpeg', 0.94);
+      const imgHeightPt = sh * pxToPt;
+      pdf.addImage(imgData, 'JPEG', marginX, headerH, usableWidth, imgHeightPt);
+
+      drawPdfHeaderFooter(pdf, i+1, totalPages, pageWidth, pageHeight, monthText);
+    }
+
+    pdf.save(`GEHU-Alumni-LinkedIn-Report-${selectedMonth||'all'}.pdf`);
+    showToast("Report downloaded ✓");
+  }catch(err){
+    console.error("PDF export failed:", err);
+    alert("Something went wrong generating the PDF. Please try again.");
+  }finally{
+    document.body.classList.remove('pdf-export-mode');
+    btn.disabled = false;
+    btn.textContent = originalLabel;
+  }
+}
+
+function drawPdfHeaderFooter(pdf, page, totalPages, pageWidth, pageHeight, monthText){
+  // Header band with institute branding
+  pdf.setFillColor(18, 24, 43);
+  pdf.rect(0, 0, pageWidth, 40, 'F');
+  pdf.setFillColor(200, 147, 43);
+  pdf.rect(0, 40, pageWidth, 2, 'F');
+  pdf.setTextColor(255, 255, 255);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setFontSize(12.5);
+  pdf.text('GEHU Alumni Relations', 26, 25);
+  pdf.setFont('helvetica', 'normal');
+  pdf.setFontSize(9);
+  pdf.setTextColor(232, 210, 160);
+  pdf.text(`LinkedIn Command Center · ${monthText}`, pageWidth - 26, 25, { align: 'right' });
+
+  // Footer with page numbers + generation timestamp
+  pdf.setDrawColor(216, 222, 231);
+  pdf.setLineWidth(0.5);
+  pdf.line(26, pageHeight - 24, pageWidth - 26, pageHeight - 24);
+  pdf.setTextColor(91, 100, 114);
+  pdf.setFontSize(8.5);
+  pdf.text(`Generated ${new Date().toLocaleString('en-IN')}`, 26, pageHeight - 12);
+  pdf.text(`Page ${page} of ${totalPages}`, pageWidth - 26, pageHeight - 12, { align: 'right' });
+}
+
+/* ================= excel import (merges into shared dataset) ================= */
+document.getElementById('fileInput').addEventListener('change', function(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async function(evt){
+    try{
+      const wbk = XLSX.read(evt.target.result, {type:'array', cellDates:true});
+      const sheetName = wbk.SheetNames.find(n=>n.toLowerCase().includes('master')) || wbk.SheetNames[0];
+      const sheet = wbk.Sheets[sheetName];
+      const json = XLSX.utils.sheet_to_json(sheet, {defval:null});
+      const mapped = json.map(row=>{
+        const month = row['Month'];
+        let monthStr;
+        if(month instanceof Date) monthStr = month.toISOString().slice(0,10);
+        else monthStr = String(month);
+        return {
+          month: monthStr,
+          campus: row['Campus'],
+          department: row['Department'],
+          programs: row['Programs / Courses'],
+          hasPage: row['Has LinkedIn Page'],
+          url: row['LinkedIn URL'],
+          posts: row['Direct Posts (This Month)'],
+          spotlight: row['Spotlight Posts'],
+          connections: row['Total Connections'],
+          followers: row['Total Followers'],
+          status: row['Activity Status'],
+          updatedBy: "Excel import"
+        };
+      }).filter(r=>r.campus && r.department && r.month && r.month!=="null");
+      if(mapped.length===0){ alert("Couldn't find rows in a 'Master Data' sheet. Please upload the tracker workbook."); return; }
+
+      mapped.forEach(rec=>{
+        rawData = rawData.filter(r=>!(r.month===rec.month && r.campus===rec.campus && r.department===rec.department));
+        rawData.push(rec);
+      });
+      recomputeGrowth(rawData);
+      selectedMonth = allMonths(rawData).slice(-1)[0];
+      const ok = await persist("Imported "+file.name);
+      renderAll();
+      showToast(ok ? `Imported ${mapped.length} row(s) from ${file.name} ✓` : `Imported ${mapped.length} row(s) locally (not connected to shared storage).`);
+    }catch(err){
+      alert("Could not read that file. Please upload the GEHU LinkedIn Tracker .xlsx file.");
+      console.error(err);
+    } finally {
+      e.target.value = "";
+    }
+  };
+  reader.readAsArrayBuffer(file);
+});
+
+/* ================= reset ================= */
+document.getElementById('resetLink').addEventListener('click', async ()=>{
+  if(!confirm("This replaces the shared dataset for EVERYONE with the original demo snapshot. Continue?")) return;
+  if(!confirm("Are you absolutely sure? Any real numbers entered so far will be lost.")) return;
+  rawData = JSON.parse(document.getElementById('seed-data').textContent);
+  recomputeGrowth(rawData);
+  selectedMonth = null;
+  const ok = await persist("Reset to demo snapshot");
+  renderAll();
+  showToast(ok ? "Restored the original demo snapshot." : "Reset locally (not connected to shared storage).");
+});
+
+/* ================= init ================= */
+function hideLoadingOverlay(){
+  const el = document.getElementById('loadingOverlay');
+  if(el) el.classList.add('hide');
+}
+
+// Absolute safety net: no matter what goes wrong above, never leave the
+// spinner on screen for more than a few seconds.
+setTimeout(hideLoadingOverlay, 6000);
+
+async function init(){
+  const seed = JSON.parse(document.getElementById('seed-data').textContent);
+  try{
+    let records = await loadRecords();
+    if(records === null){
+      records = seed;
+      recomputeGrowth(records);
+      await persist("Seeded initial demo data");
+    } else {
+      recomputeGrowth(records);
+    }
+    rawData = records;
+    const meta = await loadMeta();
+    updateLivePill(meta);
+  }catch(err){
+    console.error("Falling back to local seed data:", err);
+    storageAvailable = false;
+    rawData = seed;
+    recomputeGrowth(rawData);
+    updateLivePill(null);
+  }
+  try{
+    renderAll();
+  }catch(err){
+    console.error("Render error:", err);
+  }
+  hideLoadingOverlay();
+}
+init();
+</script>
+</body>
+</html>
