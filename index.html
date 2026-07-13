@@ -1742,7 +1742,7 @@ function generateExecutiveInsights(){
   if(sortedCoords.length) parts.push(`${sortedCoords[0].name} (${sortedCoords[0].campus}) is the most active coordinator this period with an engagement score of ${sortedCoords[0].score}/100.`);
   const heldSessions = STATE.sessions.filter(s=>s.status==='Held').length;
   const plannedSessions = STATE.sessions.filter(s=>s.status==='Planned').length;
-  parts.push(`${heldSessions} alumni session(s) have been held to date, with ${plannedSessions} more planned.`);
+  parts.push(`${heldSessions} alumni session(s) have been held to date, with ${Sessions} more .`);
   const chAn = chapterAnalytics();
   if(chAn.totalChapters) parts.push(`WhatsApp chapters cover ${chAn.totalChapters} region(s) with ${chAn.totalMembers.toLocaleString()} active members; ${chAn.inactiveChapters} chapter(s) are currently inactive and may need re-engagement.`);
   const missing = CAMPUSES.filter(c=>!recordsForMonth(STATE.month,'All').some(r=>r.campus===c));
@@ -1905,7 +1905,7 @@ function openSessionModal(id){
     <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
       <div class="modal" style="max-width:640px">
         <h2>${s?'Edit Session':'Log Alumni Session'}</h2>
-        <div class="sub">Planned or held sessions, visible to all viewers.</div>
+        <div class="sub">Planned or Completed sessions, visible to all viewers.</div>
         <div class="field-row">
           <div class="field"><label>Alumni Name</label><input id="sSpeaker" value="${s?s.speaker:''}"></div>
           <div class="field"><label>Date</label><input type="date" id="sDate" value="${s?s.date:''}"></div>
