@@ -1426,7 +1426,7 @@ function renderFeedbackAnalytics(root){
       <div class="kpi-card"><div class="kpi-label">Would Recommend</div><div class="kpi-value">${f.recommendPct===null?'—':f.recommendPct+'%'}</div><div class="kpi-delta flat">Recommendation score</div></div>
       <div class="kpi-card"><div class="kpi-label">Student Participation</div><div class="kpi-value">${f.participationRate===null?'—':f.participationRate+'%'}</div><div class="kpi-delta flat">Feedback vs attendance</div></div>
     </div>
-    <div class="section-title-row"><h2>🤖 Auto-Generated Feedback Summary</h2><span class="hint">Computed directly from submitted ratings — not a live LLM call</span></div>
+    <div class="section-title-row"><h2>🤖 Auto-Generated Feedback Summary</h2><span class="hint">*Computed directly from submitted ratings — not a live LLM call</span></div>
     <div class="insight-box">${feedbackInsightSummary()}</div>
 
     <div class="section-title-row"><h2>Average Rating by Department</h2></div>
