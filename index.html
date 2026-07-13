@@ -509,6 +509,8 @@ let STATE = {
   activeTab:'overview',
   month: currentMonthStr(),
   campusFilter:'All',
+  exDeptCampus:'All',
+  exDeptView:'consolidated', // 'consolidated' | 'byCampus'
   deptSearch:'',
   syncing:false,
   lastSync:null,
@@ -793,6 +795,19 @@ function deptTotals(month, campus){
     map[key].spotlights += Number(r.spotlights)||0;
   });
   return Object.values(map).sort((a,b)=>b.followers-a.followers);
+}
+function deptTotalsByCampus(month, campus){
+  const list = recordsForMonth(month, campus);
+  const map = {};
+  list.forEach(r=>{
+    const key = r.department+'|||'+r.campus;
+    if(!map[key]) map[key] = {department:r.department, campus:r.campus, followers:0, connections:0, posts:0, spotlights:0};
+    map[key].followers += Number(r.followers)||0;
+    map[key].connections += Number(r.connections)||0;
+    map[key].posts += Number(r.posts)||0;
+    map[key].spotlights += Number(r.spotlights)||0;
+  });
+  return Object.values(map).sort((a,b)=> a.department===b.department ? b.followers-a.followers : a.department.localeCompare(b.department));
 }
 function totalKpis(month){
   const list = recordsForMonth(month,'All');
@@ -1734,9 +1749,25 @@ function generateExecutiveInsights(){
   if(missing.length) parts.push(`Action needed: ${missing.join(', ')} ${missing.length>1?'have':'has'} not yet submitted ${monthLabel(STATE.month)} data.`);
   return parts;
 }
+function renderExDeptTable(){
+  const el = document.getElementById('exDeptTable');
+  if(!el) return;
+  if(STATE.exDeptView==='byCampus'){
+    const rows = deptTotalsByCampus(STATE.month, 'All');
+    el.innerHTML = rows.length ? `
+      <table><thead><tr><th>Department</th><th>Campus</th><th>Followers</th><th>Connections</th><th>Posts</th><th>Spotlights</th></tr></thead>
+      <tbody>${rows.map(d=>`<tr><td data-label="Department">${d.department}</td><td data-label="Campus">${d.campus}</td><td data-label="Followers" class="num">${d.followers.toLocaleString()}</td>
+        <td data-label="Connections" class="num">${d.connections.toLocaleString()}</td><td data-label="Posts" class="num">${d.posts}</td><td data-label="Spotlights" class="num">${d.spotlights}</td></tr>`).join('')}</tbody></table>` : `<div class="empty">No data for ${monthLabel(STATE.month)}.</div>`;
+  } else {
+    const dts = deptTotals(STATE.month, STATE.exDeptCampus);
+    el.innerHTML = dts.length ? `
+      <table><thead><tr><th>Department</th><th>Followers</th><th>Connections</th><th>Posts</th><th>Spotlights</th></tr></thead>
+      <tbody>${dts.map(d=>`<tr><td data-label="Department">${d.department}</td><td data-label="Followers" class="num">${d.followers.toLocaleString()}</td>
+        <td data-label="Connections" class="num">${d.connections.toLocaleString()}</td><td data-label="Posts" class="num">${d.posts}</td><td data-label="Spotlights" class="num">${d.spotlights}</td></tr>`).join('')}</tbody></table>` : `<div class="empty">No data for ${monthLabel(STATE.month)}${STATE.exDeptCampus!=='All'?' at '+STATE.exDeptCampus:''}.</div>`;
+  }
+}
 function renderExecutive(root){
   const cts = campusTotals(STATE.month);
-  const dts = deptTotals(STATE.month,'All');
   const coordRanked = STATE.coordinators.map(c=>({...c, score:coordEngagementScore(c, STATE.month)})).sort((a,b)=>b.score-a.score);
   const insights = generateExecutiveInsights();
   root.innerHTML = `
@@ -1751,6 +1782,18 @@ function renderExecutive(root){
     <div class="card"><div class="table-wrap" id="exCampusTable"></div></div>
 
     <div class="section-title-row"><h2>Department-wise Performance Comparison</h2></div>
+    <div class="filters no-print" style="margin-bottom:10px">
+      <label class="mono" style="font-size:12px;color:var(--ink-dim)">VIEW</label>
+      <select id="exDeptView">
+        <option value="consolidated" ${STATE.exDeptView==='consolidated'?'selected':''}>Consolidated (All Campuses)</option>
+        <option value="byCampus" ${STATE.exDeptView==='byCampus'?'selected':''}>Campus-wise Breakdown</option>
+      </select>
+      <label class="mono" style="font-size:12px;color:var(--ink-dim)">CAMPUS</label>
+      <select id="exDeptCampus" ${STATE.exDeptView==='consolidated'?'':'disabled'}>
+        <option value="All" ${STATE.exDeptCampus==='All'?'selected':''}>All Campuses</option>
+        ${CAMPUSES.map(c=>`<option value="${c}" ${STATE.exDeptCampus===c?'selected':''}>${c}</option>`).join('')}
+      </select>
+    </div>
     <div class="card"><div class="table-wrap" id="exDeptTable"></div></div>
 
     <div class="section-title-row"><h2>Coordinator-wise Performance Comparison</h2></div>
@@ -1763,10 +1806,9 @@ function renderExecutive(root){
     <tbody>${cts.map(c=>`<tr><td data-label="Campus">${c.campus}</td><td data-label="Followers" class="num">${c.followers.toLocaleString()}</td>
       <td data-label="Connections" class="num">${c.connections.toLocaleString()}</td><td data-label="Posts" class="num">${c.posts}</td><td data-label="Spotlights" class="num">${c.spotlights}</td></tr>`).join('')}</tbody></table>`;
 
-  document.getElementById('exDeptTable').innerHTML = `
-    <table><thead><tr><th>Department</th><th>Followers</th><th>Connections</th><th>Posts</th><th>Spotlights</th></tr></thead>
-    <tbody>${dts.map(d=>`<tr><td data-label="Department">${d.department}</td><td data-label="Followers" class="num">${d.followers.toLocaleString()}</td>
-      <td data-label="Connections" class="num">${d.connections.toLocaleString()}</td><td data-label="Posts" class="num">${d.posts}</td><td data-label="Spotlights" class="num">${d.spotlights}</td></tr>`).join('')}</tbody></table>`;
+  renderExDeptTable();
+  document.getElementById('exDeptView').addEventListener('change', e=>{ STATE.exDeptView=e.target.value; render(); });
+  document.getElementById('exDeptCampus').addEventListener('change', e=>{ STATE.exDeptCampus=e.target.value; renderExDeptTable(); });
 
   document.getElementById('exCoordTable').innerHTML = coordRanked.length? `
     <table><thead><tr><th>Coordinator</th><th>Campus / Dept</th><th>Sessions</th><th>LI Posts</th><th>Onboarded</th><th>Events</th><th>Response %</th><th>Score</th></tr></thead>
