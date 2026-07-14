@@ -50,7 +50,10 @@ body{
 h1,h2,h3,.display{ font-family:'Fraunces', serif; }
 .mono{ font-family:'IBM Plex Mono', monospace; }
 a{ color:inherit; }
-button{ font-family:inherit; cursor:pointer; }
+button{ font-family:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+button:focus{ outline:none; }
+button:focus-visible{ outline:2px solid var(--gold); outline-offset:1px; }
+button:active{ color:inherit; }
 ::-webkit-scrollbar{ height:8px; width:8px; }
 ::-webkit-scrollbar-thumb{ background:var(--line-strong); border-radius:6px; }
 ::-webkit-scrollbar-track{ background:transparent; }
@@ -79,12 +82,22 @@ button{ font-family:inherit; cursor:pointer; }
 .brand-text .sub{ font-size:12.5px; color:rgba(255,255,255,0.65); letter-spacing:0.4px; text-transform:uppercase; margin-top:2px; display:flex; align-items:center; gap:7px;}
 .topbar .btn{ border-color:rgba(255,255,255,0.28); background:transparent; color:#fff; }
 .topbar .btn:hover{ border-color:var(--gold); background:rgba(255,255,255,0.08); }
+.topbar .btn:active{ color:#fff; }
 .topbar .btn-gold{ background:linear-gradient(155deg, var(--gold) 0%, #a9821c 100%); color:var(--navy); border:none; }
+.topbar .btn-gold:active{ color:var(--navy); }
 .topbar .admin-badge{ background:rgba(255,255,255,0.1); border-color:rgba(255,255,255,0.25); }
 .btn-light{ background:#fff; color:var(--navy); border:1.5px solid #fff; font-weight:600; }
 .btn-light:hover{ background:#f0f2f5; transform:translateY(-1px); }
+.btn-light:active{ color:var(--navy); }
 .btn-navy-solid{ background:var(--navy); color:#fff; border:1px solid rgba(255,255,255,0.15); font-weight:600; }
 .btn-navy-solid:hover{ filter:brightness(1.25); }
+.btn-navy-solid:active{ color:#fff; }
+.btn-refresh{ background:transparent; color:#fff; border:1px solid rgba(255,255,255,0.28); padding:10px 12px; border-radius:10px; display:inline-flex; align-items:center; gap:7px; font-size:13.5px; font-weight:500; transition:all .15s ease; }
+.btn-refresh:hover{ border-color:var(--gold); background:rgba(255,255,255,0.08); }
+.btn-refresh:active{ color:#fff; }
+.btn-refresh .refresh-icon{ display:inline-block; transition:transform .5s ease; }
+.btn-refresh.spinning .refresh-icon{ animation:spin .7s linear infinite; }
+@keyframes spin{ from{ transform:rotate(0deg);} to{ transform:rotate(360deg);} }
 .pulse{
   width:8px; height:8px; border-radius:50%; background:var(--success); position:relative; flex-shrink:0;
   box-shadow:0 0 0 0 rgba(63,174,106,0.6);
@@ -102,14 +115,19 @@ button{ font-family:inherit; cursor:pointer; }
   display:inline-flex; align-items:center; gap:7px; transition:all .15s ease; white-space:nowrap;
 }
 .btn:hover{ border-color:var(--gold); background:var(--bg-card-2); transform:translateY(-1px); }
+.btn:active{ color:var(--ink); }
 .btn-gold{ background:linear-gradient(155deg, var(--gold) 0%, #a9821c 100%); color:#1c1608; border:none; font-weight:600;}
 .btn-gold:hover{ filter:brightness(1.08); }
+.btn-gold:active{ color:#1c1608; }
 .btn-maroon{ background:linear-gradient(155deg, var(--maroon-light) 0%, var(--maroon) 100%); color:#fff; border:none; font-weight:600;}
 .btn-maroon:hover{ filter:brightness(1.1); }
+.btn-maroon:active{ color:#fff; }
 .btn-ghost{ background:transparent; }
+.btn-ghost:active{ color:inherit; }
 .btn-sm{ padding:6px 11px; font-size:12px; border-radius:8px;}
 .btn-danger{ color:var(--danger); border-color:rgba(214,82,74,0.4); }
 .btn-danger:hover{ border-color:var(--danger); background:rgba(214,82,74,0.08); }
+.btn-danger:active{ color:var(--danger); }
 .admin-badge{
   font-size:11px; padding:6px 10px; border-radius:20px; background:rgba(63,174,106,0.12); color:var(--success);
   border:1px solid rgba(63,174,106,0.35); font-weight:600; letter-spacing:.3px; display:flex; align-items:center; gap:6px;
@@ -206,6 +224,7 @@ button{ font-family:inherit; cursor:pointer; }
   border-bottom:2px solid transparent; white-space:nowrap; transition:all .15s;
 }
 .tab-btn:hover{ color:var(--ink); }
+.tab-btn:active{ color:var(--navy); }
 .tab-btn.active{ color:var(--navy); font-weight:700; border-bottom-color:var(--gold); }
 
 /* ===== Filters row ===== */
@@ -286,6 +305,7 @@ tbody tr:hover{ background:rgba(255,255,255,0.02); }
   border-radius:7px; display:inline-flex; align-items:center; justify-content:center; font-size:13px;
 }
 .icon-btn:hover{ color:var(--ink); border-color:var(--gold); }
+.icon-btn:active{ color:var(--ink); }
 
 /* ===== Leaderboard bars ===== */
 .lb-row{
@@ -350,6 +370,7 @@ tbody tr:hover{ background:rgba(255,255,255,0.02); }
 .hd-msec-btn{ background:var(--bg-card-2); border:1px solid var(--line-strong); color:var(--ink-dim); padding:7px 13px; border-radius:20px; font-size:11.5px; font-weight:600; white-space:nowrap; }
 .hd-msec-btn:hover{ color:var(--ink); border-color:var(--gold); }
 .hd-msec-btn.active{ background:var(--navy); color:#fff; border-color:var(--navy); }
+.hd-msec-btn.active:active{ color:#fff; }
 .hd-msec{ animation:toastIn .15s ease; }
 .modal-actions{ display:flex; justify-content:flex-end; gap:10px; margin-top:18px; }
 .pin-dots{ display:flex; gap:10px; justify-content:center; margin:18px 0; }
@@ -369,6 +390,16 @@ tbody tr:hover{ background:rgba(255,255,255,0.02); }
 .foot{ margin-top:30px; text-align:center; font-size:11.5px; color:var(--ink-faint); padding:20px 0; }
 .section-title-row{ display:flex; align-items:center; justify-content:space-between; margin:26px 0 14px; flex-wrap:wrap; gap:10px;}
 .section-title-row h2{ font-size:20px; font-weight:600; }
+.section-title-row .section-actions{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.btn-refresh-inline{
+  background:var(--bg-card); border:1px solid var(--line-strong); color:var(--ink-dim);
+  padding:7px 12px; border-radius:9px; font-size:12px; font-weight:600;
+  display:inline-flex; align-items:center; gap:6px; transition:all .15s ease;
+}
+.btn-refresh-inline:hover{ border-color:var(--gold); color:var(--ink); background:var(--bg-card-2); }
+.btn-refresh-inline:active{ color:var(--ink); }
+.btn-refresh-inline .refresh-icon{ display:inline-block; }
+.btn-refresh-inline.spinning .refresh-icon{ animation:spin .7s linear infinite; }
 
 /* ===== Loading overlay ===== */
 .loading-overlay{
@@ -429,6 +460,7 @@ tbody tr:hover{ background:rgba(255,255,255,0.02); }
       <div id="searchBoxWrap"></div>
       <div id="notifBellWrap" style="position:relative"></div>
       <span id="adminBadge"></span>
+      <button class="btn-refresh" id="btnRefresh" title="Refresh data from the live sheet"><span class="refresh-icon">⟳</span> Refresh</button>
       <button class="btn btn-ghost" id="btnXlsxImport">⤒ Import Excel</button>
       <button class="btn btn-light" id="btnXlsxExport">⤓ Download All Data (Excel)</button>
       <button class="btn btn-navy-solid" id="btnPdf">⤓ Build Custom Report</button>
@@ -775,6 +807,8 @@ function renderSyncState(){
   } else {
     el.innerHTML = `<span class="admin-badge" style="background:rgba(155,152,166,0.1);color:var(--ink-dim);border-color:var(--line-strong)">👁 Viewer ${STATE.syncing?'· syncing…':''}</span>`;
   }
+  const rb = document.getElementById('btnRefresh');
+  if(rb) rb.classList.toggle('spinning', !!STATE.syncing);
 }
 
 /* =========================================================================
@@ -787,6 +821,29 @@ function toast(msg, type='ok'){
   t.textContent = msg;
   wrap.appendChild(t);
   setTimeout(()=>{ t.style.opacity='0'; t.style.transition='opacity .3s'; setTimeout(()=>t.remove(),300); }, 3000);
+}
+
+/* =========================================================================
+   REFRESH (re-pull live data + re-render whichever page is currently open)
+========================================================================= */
+let REFRESHING = false;
+async function refreshData(){
+  if(REFRESHING) return;
+  REFRESHING = true;
+  const btns = document.querySelectorAll('#btnRefresh, .btn-refresh-inline');
+  btns.forEach(b=> b.classList.add('spinning'));
+  try{
+    const synced = await pullFromBackend();
+    if(synced){
+      toast('Data refreshed from the live sheet.');
+    } else {
+      toast('Live sheet unreachable — showing current local data.', 'err');
+    }
+    render();
+  } finally {
+    REFRESHING = false;
+    document.querySelectorAll('#btnRefresh, .btn-refresh-inline').forEach(b=> b.classList.remove('spinning'));
+  }
 }
 
 /* =========================================================================
@@ -1221,6 +1278,16 @@ function render(){
   (renderers[STATE.activeTab]||renderOverview)(c);
 }
 
+// Small reusable inline refresh button HTML — dropped into each page's
+// header row so a refresh control is always close at hand.
+function refreshButtonHtml(){
+  return `<button class="btn-refresh-inline no-print" id="pageRefreshBtn" title="Refresh data from the live sheet"><span class="refresh-icon">⟳</span> Refresh</button>`;
+}
+function wireRefreshButton(){
+  const b = document.getElementById('pageRefreshBtn');
+  if(b) b.addEventListener('click', refreshData);
+}
+
 function renderTicker(){
   const winnerEl = document.getElementById('tickerWinner');
   const track = document.getElementById('tickerTrack');
@@ -1274,6 +1341,7 @@ function renderOverview(root){
       <label class="mono" style="font-size:12px;color:var(--ink-dim)">MONTH</label>
       ${monthSelectHtml('ovMonth')}
       <span style="color:var(--ink-faint);font-size:12px;">Consolidated across all GEHU campuses</span>
+      ${refreshButtonHtml()}
     </div>
 
     <div class="kpi-grid">
@@ -1296,6 +1364,7 @@ function renderOverview(root){
     <div class="card" id="ovDeptLb"></div>
   `;
   document.getElementById('ovMonth').addEventListener('change', e=>{ STATE.month = e.target.value; render(); });
+  wireRefreshButton();
   renderLeaderboardBlock(document.getElementById('ovCampusLb'), campusTotals(STATE.month).map(c=>({name:c.campus, val:c.followers})));
   renderLeaderboardBlock(document.getElementById('ovDeptLb'), deptTotals(STATE.month,'All').slice(0,8).map(d=>({name:d.department, val:d.followers})));
 }
@@ -1327,6 +1396,7 @@ function renderCampus(root){
       ${campusSelectHtml('cvCampus', false)}
       ${STATE.campusViewMode==='course'? `<input type="text" id="cvSearch" placeholder="Search department or course…" value="${STATE.deptSearch}">`:''}
       ${STATE.isAdmin && STATE.campusViewMode==='course'? `<button class="btn btn-maroon btn-sm" id="cvAdd">+ Add Entry</button>`:''}
+      ${refreshButtonHtml()}
     </div>
     <div class="tabs no-print" style="margin-top:0;border-bottom:none">
       <button class="tab-btn ${STATE.campusViewMode==='course'?'active':''}" id="cvModeCourse">By Course</button>
@@ -1342,6 +1412,7 @@ function renderCampus(root){
   document.getElementById('cvCampus').addEventListener('change', e=>{ STATE.campusFilter=e.target.value; render(); });
   document.getElementById('cvModeCourse').addEventListener('click', ()=>{ STATE.campusViewMode='course'; render(); });
   document.getElementById('cvModeMonthly').addEventListener('click', ()=>{ STATE.campusViewMode='monthly'; render(); });
+  wireRefreshButton();
   if(STATE.campusViewMode==='course'){
     document.getElementById('cvSearch').addEventListener('input', e=>{ STATE.deptSearch=e.target.value; renderCampusTable(); });
     if(STATE.isAdmin) document.getElementById('cvAdd').addEventListener('click', ()=>openRecordModal());
@@ -1420,7 +1491,7 @@ function renderCampusTable(){
 /* ---------- LEADERBOARDS ---------- */
 function renderLeaderboards(root){
   root.innerHTML = `
-    <div class="filters no-print">${monthSelectHtml('lbMonth')}</div>
+    <div class="filters no-print">${monthSelectHtml('lbMonth')}${refreshButtonHtml()}</div>
     <div class="section-title-row"><h2>🏆 Campus Leaderboard</h2><span class="hint">By total followers — ${monthLabel(STATE.month)}</span></div>
     <div class="card" id="lbCampus"></div>
     <div class="section-title-row"><h2>🏆 Department Leaderboard</h2><span class="hint">By total followers, all campuses</span></div>
@@ -1429,6 +1500,7 @@ function renderLeaderboards(root){
     <div class="card" id="lbGrowth"></div>
   `;
   document.getElementById('lbMonth').addEventListener('change', e=>{ STATE.month=e.target.value; render(); });
+  wireRefreshButton();
   renderLeaderboardBlock(document.getElementById('lbCampus'), campusTotals(STATE.month).map(c=>({name:c.campus, val:c.followers})));
   renderLeaderboardBlock(document.getElementById('lbDept'), deptTotals(STATE.month,'All').map(d=>({name:d.department, val:d.followers})));
   const growthRows = recordsForMonth(STATE.month,'All').map(r=>({name:`${r.campus} · ${r.department}`, val:growthFor(r)}))
@@ -1463,7 +1535,10 @@ function renderSessions(root){
   root.innerHTML = `
     <div class="section-title-row">
       <h2>Alumni Sessions</h2>
-      ${STATE.isAdmin? `<button class="btn btn-maroon btn-sm no-print" id="addSession">+ Log Session</button>`:''}
+      <div class="section-actions no-print">
+        ${refreshButtonHtml()}
+        ${STATE.isAdmin? `<button class="btn btn-maroon btn-sm" id="addSession">+ Log Session</button>`:''}
+      </div>
     </div>
     <div class="filters no-print">
       <div class="tabs" style="margin-top:0;border-bottom:none">
@@ -1474,6 +1549,7 @@ function renderSessions(root){
     </div>
     <div id="sessionBody"></div>
   `;
+  wireRefreshButton();
   if(STATE.isAdmin) document.getElementById('addSession').addEventListener('click', ()=>openSessionModal());
   document.getElementById('svAll').addEventListener('click', ()=>{ STATE.sessionViewMode='all'; render(); });
   document.getElementById('svMonth').addEventListener('click', ()=>{ STATE.sessionViewMode='month'; render(); });
@@ -1573,7 +1649,10 @@ function renderHelpdesk(root){
   root.innerHTML = `
     <div class="section-title-row">
       <h2>Alumni Help Desk</h2>
-      ${STATE.isAdmin? `<button class="btn btn-maroon btn-sm no-print" id="addHelpdesk">+ Register Visit</button>`:''}
+      <div class="section-actions no-print">
+        ${refreshButtonHtml()}
+        ${STATE.isAdmin? `<button class="btn btn-maroon btn-sm" id="addHelpdesk">+ Register Visit</button>`:''}
+      </div>
     </div>
     <div class="kpi-grid">
       <div class="kpi-card"><div class="kpi-label">Total Visits</div><div class="kpi-value">${a.total}</div></div>
@@ -1598,6 +1677,7 @@ function renderHelpdesk(root){
     </div>
     <div class="table-wrap" id="hdTable"></div>
   `;
+  wireRefreshButton();
   if(STATE.isAdmin) document.getElementById('addHelpdesk').addEventListener('click', ()=>openHelpdeskModal());
   document.getElementById('hdSearch').addEventListener('input', e=>{ STATE.hdSearch=e.target.value; renderHelpdeskTable(); });
   document.getElementById('hdStatusFilter').addEventListener('change', e=>{ STATE.hdStatusFilter=e.target.value; renderHelpdeskTable(); });
@@ -1836,7 +1916,10 @@ function renderWhatsapp(root){
   root.innerHTML = `
     <div class="section-title-row">
       <h2>WhatsApp Chapter Analytics</h2>
-      ${STATE.isAdmin? `<button class="btn btn-maroon btn-sm no-print" id="addChapter">+ Add Chapter</button>`:''}
+      <div class="section-actions no-print">
+        ${refreshButtonHtml()}
+        ${STATE.isAdmin? `<button class="btn btn-maroon btn-sm" id="addChapter">+ Add Chapter</button>`:''}
+      </div>
     </div>
     <div class="kpi-grid">
       <div class="kpi-card"><div class="kpi-label">Total Chapters</div><div class="kpi-value">${a.totalChapters}</div></div>
@@ -1872,6 +1955,7 @@ function renderWhatsapp(root){
     <div class="section-title-row"><h2>🔔 Activity History — Full Audit Trail</h2><span class="hint">Every addition, removal or transfer is logged here</span></div>
     <div class="card"><div class="table-wrap" id="wHistoryTable"></div></div>
   `;
+  wireRefreshButton();
   if(STATE.isAdmin) document.getElementById('addChapter').addEventListener('click', ()=>openChapterModal());
 
   if(a.alerts.length){
@@ -1949,6 +2033,7 @@ function renderCoordinators(root){
       ${campusSelectHtml('coordCampus', true)}
       ${monthSelectHtml('coordMonth')}
       ${STATE.isAdmin? `<button class="btn btn-maroon btn-sm" id="addCoord">+ Add Coordinator</button>`:''}
+      ${refreshButtonHtml()}
     </div>
     <div class="grid-cards" id="coordGrid"></div>
   `;
@@ -1958,6 +2043,7 @@ function renderCoordinators(root){
   const coordMonthSel = document.getElementById('coordMonth');
   coordMonthSel.addEventListener('change', e=>{ STATE.month=e.target.value; renderCoordGrid(); });
   if(STATE.isAdmin) document.getElementById('addCoord').addEventListener('click', ()=>openCoordModal());
+  wireRefreshButton();
   renderCoordGrid();
 }
 function renderCoordGrid(){
@@ -2021,7 +2107,10 @@ function renderDataEntry(root){
   root.innerHTML = `
     <div class="card">
       <div class="card-head"><h2>Add / Manage Monthly Metrics</h2><span class="hint">Entries roll up into all dashboards instantly</span></div>
-      <button class="btn btn-maroon" id="deAdd">+ Add New Entry</button>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-maroon" id="deAdd">+ Add New Entry</button>
+        ${refreshButtonHtml()}
+      </div>
     </div>
     <div class="card">
       <div class="card-head"><h2>All Records</h2><span class="hint">${STATE.records.length} total entries</span></div>
@@ -2032,6 +2121,7 @@ function renderDataEntry(root){
   document.getElementById('deAdd').addEventListener('click', ()=>openRecordModal());
   document.getElementById('deMonth').addEventListener('change', e=>{ STATE.month=e.target.value; renderDeTable(); });
   document.getElementById('deCampus').addEventListener('change', e=>{ STATE.campusFilter=e.target.value; renderDeTable(); });
+  wireRefreshButton();
   renderDeTable();
 }
 function renderDeTable(){
@@ -2084,6 +2174,7 @@ function renderTrends(root){
     <div class="filters no-print">
       ${campusSelectHtml('trCampus', false)}
       <span style="color:var(--ink-faint);font-size:12px;">Comparing up to the last 6 available months, ending ${monthLabel(STATE.month)}</span>
+      ${refreshButtonHtml()}
     </div>
     <div class="kpi-grid">
       <div class="kpi-card"><div class="kpi-label">Followers — ${monthLabel(latest.month)}</div><div class="kpi-value">${latest.followers.toLocaleString()}</div>
@@ -2098,6 +2189,7 @@ function renderTrends(root){
     <div class="card"><div class="table-wrap" id="trTable"></div></div>
   `;
   document.getElementById('trCampus').addEventListener('change', e=>{ STATE.campusFilter=e.target.value; render(); });
+  wireRefreshButton();
   renderLeaderboardBlock(document.getElementById('trMonthly'), rowsByMonth.map(r=>({name:monthLabel(r.month), val:r.followers})));
   document.getElementById('trTable').innerHTML = `
     <table><thead><tr><th>Month</th><th>Followers</th><th>Connections</th><th>Posts</th><th>Spotlights</th></tr></thead>
@@ -2159,7 +2251,7 @@ function renderExecutive(root){
   const coordRanked = STATE.coordinators.map(c=>({...c, score:coordEngagementScore(c, STATE.month)})).sort((a,b)=>b.score-a.score);
   const insights = generateExecutiveInsights();
   root.innerHTML = `
-    <div class="filters no-print">${monthSelectHtml('exMonth')}<span style="color:var(--ink-faint);font-size:12px;">Management view — all campuses, departments & coordinators</span></div>
+    <div class="filters no-print">${monthSelectHtml('exMonth')}<span style="color:var(--ink-faint);font-size:12px;">Management view — all campuses, departments & coordinators</span>${refreshButtonHtml()}</div>
 
     <div class="section-title-row"><h2>🤖 Auto-AI Generated Monthly Insights</h2><span class="hint">Computed from your live data</span></div>
     <div class="insight-box">
@@ -2188,6 +2280,7 @@ function renderExecutive(root){
     <div class="card"><div class="table-wrap" id="exCoordTable"></div></div>
   `;
   document.getElementById('exMonth').addEventListener('change', e=>{ STATE.month=e.target.value; render(); });
+  wireRefreshButton();
 
   document.getElementById('exCampusTable').innerHTML = `
     <table><thead><tr><th>Campus</th><th>Followers</th><th>Connections</th><th>Posts</th><th>Spotlights</th></tr></thead>
@@ -3254,6 +3347,7 @@ async function init(){
   document.getElementById('btnXlsxExport').addEventListener('click', exportExcel);
   document.getElementById('btnXlsxImport').addEventListener('click', ()=>document.getElementById('xlsxFileInput').click());
   document.getElementById('xlsxFileInput').addEventListener('change', (e)=>{ if(e.target.files[0]) importExcel(e.target.files[0]); e.target.value=''; });
+  document.getElementById('btnRefresh').addEventListener('click', refreshData);
 
   // Keep the loading bar visible (instead of flashing dummy data) until the
   // real sync attempt resolves one way or the other.
