@@ -346,6 +346,11 @@ tbody tr:hover{ background:rgba(255,255,255,0.02); }
 }
 .field input:focus, .field select:focus, .field textarea:focus{ outline:none; border-color:var(--gold); }
 .field-row{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.hd-msec-tabs{ display:flex; gap:6px; flex-wrap:wrap; margin:4px 0 16px; padding-bottom:10px; border-bottom:1px solid var(--line); }
+.hd-msec-btn{ background:var(--bg-card-2); border:1px solid var(--line-strong); color:var(--ink-dim); padding:7px 13px; border-radius:20px; font-size:11.5px; font-weight:600; white-space:nowrap; }
+.hd-msec-btn:hover{ color:var(--ink); border-color:var(--gold); }
+.hd-msec-btn.active{ background:var(--navy); color:#fff; border-color:var(--navy); }
+.hd-msec{ animation:toastIn .15s ease; }
 .modal-actions{ display:flex; justify-content:flex-end; gap:10px; margin-top:18px; }
 .pin-dots{ display:flex; gap:10px; justify-content:center; margin:18px 0; }
 .pin-dots input{ width:44px; height:52px; text-align:center; font-size:22px; }
@@ -446,6 +451,7 @@ tbody tr:hover{ background:rgba(255,255,255,0.02); }
     <button class="tab-btn" data-tab="campus">Campus View</button>
     <button class="tab-btn" data-tab="leaderboards">Leaderboards</button>
     <button class="tab-btn" data-tab="sessions">Alumni Sessions</button>
+    <button class="tab-btn" data-tab="helpdesk">Alumni Help Desk</button>
     <button class="tab-btn" data-tab="whatsapp">WhatsApp Chapters</button>
     <button class="tab-btn" data-tab="coordinators">Coordinators</button>
     <button class="tab-btn" data-tab="trends">Trends</button>
@@ -474,7 +480,7 @@ tbody tr:hover{ background:rgba(255,255,255,0.02); }
 /* =========================================================================
    CONFIG
 ========================================================================= */
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwD6_Q8EVxUS-KRsf0aVV4S1AbBfNmpmMYaIobks5oGW50ZnhMD_-jxCdFBzlZUVWhx/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzj9UICIy1D5eyOg3x16WZzlUZEhraqoElwMTiPP3Ubb018ya-9kiJrCVIHG2PsA_id/exec";
 const ADMIN_PIN = "1111";     // change this to your SPOC PIN
 const INSTITUTE_NAME = "Graphic Era Hill University";
 const CAMPUSES = ["Graphic Era (Deemed to be University)", "GEHU Dehradun", "GEHU Bhimtal", "GEHU Haldwani"];
@@ -493,6 +499,14 @@ const REPORT_SECTIONS = [
   {id:'charts', label:'Charts & Trends'},
   {id:'executive', label:'Executive Summary'},
 ];
+const HD_CAMPUSES = ["GEHU Dehradun","GEHU Bhimtal","GEHU Haldwani","GEU","Graphic Era Global School","Graphic Era Medical Institute"];
+const HD_PURPOSES = ["Campus Visit","Admission Query","Recruitment","Faculty Meeting","Alumni Event","Transcript","Certificate","Placement Support","Startup Collaboration","Other"];
+const HD_CATEGORIES = ["Travel Assistance","Accommodation","Campus Navigation","Admission Guidance","Documentation","Alumni ID","Library Access","Meeting Coordination","Career Support","General Inquiry"];
+const HD_STATUSES = ["Open","In Progress","Resolved","Closed","Escalated"];
+const HD_VERIFY_TYPES = ["Registration No.","Enrollment No.","Email","Mobile Number"];
+const HD_TRAVEL_OPTIONS = ["Cab/Taxi Assistance","Route Guidance","Nearby Hotel Recommendation","Parking Support"];
+const HD_COUNSELLING_FOR = ["","Self","Sibling","Child","Friend","Referral"];
+const HD_DOCS = ["Prospectus","Admission Brochure","Transcript","Certificate","Alumni Membership Form"];
 const REPORT_CAMPUS_OPTIONS = [
   {id:'Graphic Era (Deemed to be University)', label:'Graphic Era (Deemed to be University)'},
   {id:'GEHU Dehradun', label:'Dehradun'},
@@ -518,10 +532,21 @@ let STATE = {
   sessions:[],       // {id, speaker, topic, date, campus, department, status, linkedin, batch, gradYear, company, designation,
                      //  sessionType, facultyCoordinator, attendance, documents:[{name,url}], feedbackEntries:[{...}]}
   chapters:[],       // {id, region, campus, department, admin, activeMembers, link, active, pendingInvites, history:[{date,type,count,note}]}
+  alumniWapp:[],     // {id, name, email, leavingYear, courseDept, branchDesig, campus, city, linkedin, company, designation, mobile, chapter}
+                     //  "chapter" holds the chapter's region so an alumnus can be looked up/added/removed/transferred per WhatsApp chapter
   coordinators:[],   // {id, name, department, campus, phone, email, linkedin, metricsHistory:[{month,sessionsOrganized,linkedinPosts,alumniOnboarded,eventsCoordinated,responseRate}], achievements:[{...}]}
+  helpdesk:[],       // {id, visitDate, alumnusName, regNo, enrollmentNo, email, mobile, verifyType, campus, purpose, category,
+                     //  description, assignedStaff, status, resolutionNotes, followUpDate, meetingWith, meetingDept, meetingTime,
+                     //  travelAssistance:[], accommodationRequested, accommodationStatus, counsellingFor, referralStudentName,
+                     //  referralNotes, campusTourRequested, documentsShared:[], feedbackRating, feedbackComment,
+                     //  attachments:[{name,url}], commLog:[{date,type,note}]}
   campusViewMode:'course', // 'course' | 'monthly'
   sessionViewMode:'all',   // 'all' | 'month' | 'feedback'
   coordCampusFilter:'All',
+  hdStatusFilter:'All',
+  hdCampusFilter:'All',
+  hdCategoryFilter:'All',
+  hdSearch:'',
   notifLog:[],       // persisted flagged events {id, date, type, text}
   searchQuery:'',
   notifOpen:false,
@@ -649,17 +674,51 @@ function seedData(){
      ],
      achievements:[]},
   ];
+  STATE.helpdesk = [
+    {id:uid(), visitDate:now+"-09", alumnusName:"Karan Mehta", regNo:"", enrollmentNo:"GEHU2018CSE044", email:"karan.mehta@example.com", mobile:"+91 98450 66210",
+     verifyType:"Enrollment No.", campus:"GEHU Bhimtal", purpose:"Alumni Event", category:"Campus Navigation",
+     description:"Visiting for the Alumni Meet — needed help locating the venue and parking.", assignedStaff:"Neha Joshi",
+     status:"Resolved", resolutionNotes:"Escorted to venue, parking pass issued.", followUpDate:"",
+     meetingWith:"Alumni Relations Cell", meetingDept:"CSE", meetingTime:"11:00 AM",
+     travelAssistance:["Parking Support"], accommodationRequested:false, accommodationStatus:"",
+     counsellingFor:"", referralStudentName:"", referralNotes:"", campusTourRequested:false,
+     documentsShared:[], feedbackRating:5, feedbackComment:"Very smooth experience, thank you!",
+     attachments:[], commLog:[{date:now+"-09", type:"In-Person", note:"Greeted on arrival and guided to venue."}]},
+    {id:uid(), visitDate:now+"-12", alumnusName:"Priya Nair", regNo:"REG2021009", enrollmentNo:"", email:"priya.nair@example.com", mobile:"+91 98110 22334",
+     verifyType:"Registration No.", campus:"GEHU Dehradun", purpose:"Admission Query", category:"Admission Guidance",
+     description:"Enquiring about MBA admission for her sibling; requested prospectus and fee structure.", assignedStaff:"Dr. Ramesh Bhatt",
+     status:"In Progress", resolutionNotes:"", followUpDate:now+"-20",
+     meetingWith:"Admissions Office", meetingDept:"MBA", meetingTime:"3:30 PM",
+     travelAssistance:[], accommodationRequested:false, accommodationStatus:"",
+     counsellingFor:"Sibling", referralStudentName:"", referralNotes:"Considering referral once decision is made.", campusTourRequested:true,
+     documentsShared:["Prospectus","Admission Brochure"], feedbackRating:null, feedbackComment:"",
+     attachments:[], commLog:[{date:now+"-12", type:"Email", note:"Sent prospectus and fee structure via email."}]},
+  ];
   STATE.notifLog = [
     {id:uid(), date:now+"-05", type:"chapter_join", text:"9 new alumni joined the Delhi NCR WhatsApp chapter."},
     {id:uid(), date:now+"-10", type:"chapter_exit", text:"3 members removed from Delhi NCR chapter (inactive)."},
+  ];
+  STATE.alumniWapp = [
+    {id:uid(), name:"Ananya Rawat", email:"ananya.rawat@example.com", leavingYear:"2023", courseDept:"MBA", branchDesig:"Marketing",
+     campus:"GEHU Dehradun", city:"New Delhi", linkedin:"https://linkedin.com/in/example-alum1", company:"Google", designation:"Associate Product Manager",
+     mobile:"+91 98110 44521", chapter:"Delhi NCR"},
+    {id:uid(), name:"Karan Mehta", email:"karan.mehta@example.com", leavingYear:"2022", courseDept:"CSE", branchDesig:"B.Tech CSE",
+     campus:"GEHU Bhimtal", city:"Bengaluru", linkedin:"https://linkedin.com/in/example-alum2", company:"Amazon", designation:"Cloud Engineer",
+     mobile:"+91 98450 66210", chapter:"Bengaluru"},
+    {id:uid(), name:"Priya Nair", email:"priya.nair@example.com", leavingYear:"2021", courseDept:"CSE", branchDesig:"B.Tech CSE",
+     campus:"GEHU Dehradun", city:"New Delhi", linkedin:"https://linkedin.com/in/example-alum3", company:"Microsoft", designation:"Software Engineer II",
+     mobile:"+91 98110 22334", chapter:"Delhi NCR"},
+    {id:uid(), name:"Neha Joshi", email:"neha.joshi@example.com", leavingYear:"2020", courseDept:"CSE", branchDesig:"B.Tech CSE",
+     campus:"GEHU Bhimtal", city:"Nainital", linkedin:"https://linkedin.com/in/example-alum4", company:"TCS", designation:"Systems Analyst",
+     mobile:"+91 97190 88213", chapter:"Kumaon Region"},
   ];
 }
 
 /* =========================================================================
    BACKEND SYNC (Google Apps Script)
    Contract expected on the Apps Script side:
-     GET  ?action=read                -> {records:[],sessions:[],chapters:[],coordinators:[]}
-     POST body (text/plain, JSON string) -> {action:'save', pin:'...', data:{records,sessions,chapters,coordinators}}
+     GET  ?action=read                -> {records:[],sessions:[],chapters:[],coordinators:[],alumniWapp:[]}
+     POST body (text/plain, JSON string) -> {action:'save', pin:'...', data:{records,sessions,chapters,coordinators,alumniWapp}}
    The app works fully offline against in-memory demo data if the backend
    contract differs or is unreachable — connect your own Apps Script deployment
    matching this contract to enable live cross-user sync.
@@ -678,6 +737,8 @@ async function pullFromBackend(){
       STATE.chapters = data.chapters || STATE.chapters;
       STATE.coordinators = data.coordinators || STATE.coordinators;
       STATE.notifLog = data.notifLog || STATE.notifLog;
+      STATE.alumniWapp = data.alumniWapp || STATE.alumniWapp;
+      STATE.helpdesk = data.helpdesk || STATE.helpdesk;
       STATE.lastSync = new Date();
       return true;
     }
@@ -695,7 +756,7 @@ async function pushToBackend(){
   try{
     const payload = {
       action:"save", pin: ADMIN_PIN,
-      data:{records:STATE.records, sessions:STATE.sessions, chapters:STATE.chapters, coordinators:STATE.coordinators, notifLog:STATE.notifLog}
+      data:{records:STATE.records, sessions:STATE.sessions, chapters:STATE.chapters, coordinators:STATE.coordinators, notifLog:STATE.notifLog, alumniWapp:STATE.alumniWapp, helpdesk:STATE.helpdesk}
     };
     await fetch(SCRIPT_URL, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body:JSON.stringify(payload)});
     STATE.lastSync = new Date();
@@ -953,6 +1014,19 @@ function chapterAnalytics(){
     campusBreakdown, deptBreakdown, allHistory, monthlyTrend, annualTrend, newAlumniTotal, exitedTotal, alerts};
 }
 
+/* ---------- Alumni added to WhatsApp chapters (per-member directory) ---------- */
+function alumniInChapter(chapterRegion){
+  return STATE.alumniWapp.filter(a=>a.chapter===chapterRegion);
+}
+function logChapterHistory(chapterRegion, entry){
+  const chap = STATE.chapters.find(c=>c.region===chapterRegion);
+  if(!chap) return;
+  chap.history = chap.history||[];
+  chap.history.push(entry);
+  STATE.notifLog.unshift({id:uid(), date:entry.date, type: entry.type==='join'?'chapter_join':(entry.type==='transfer'?'chapter_transfer':'chapter_exit'),
+    text:`${entry.count} alumni ${entry.type==='join'?'added to':(entry.type==='transfer'?'transferred within':'removed from')} the ${chapterRegion} WhatsApp chapter${entry.reason?` (${entry.reason})`:''}.`});
+}
+
 /* =========================================================================
    REPORT-SCOPED AGGREGATION (campus / department / multi-month filtering
    used by the customizable PDF report builder)
@@ -1047,6 +1121,14 @@ function computeNotifications(){
   const thisMonthCampuses = new Set(recordsForMonth(STATE.month,'All').map(r=>r.campus));
   CAMPUSES.forEach(c=>{ if(!thisMonthCampuses.has(c)) notes.push({id:'rep-'+c, type:'report', urgent:true, text:`Pending report: no ${monthLabel(STATE.month)} data submitted yet for ${c}.`}); });
   STATE.notifLog.slice().sort((a,b)=> new Date(b.date)-new Date(a.date)).slice(0,10).forEach(n=> notes.push({id:'log-'+n.id, type:n.type, urgent:false, text:n.text}));
+  STATE.helpdesk.filter(h=> h.status==='Escalated').forEach(h=>{
+    notes.push({id:'hdesc-'+h.id, type:'helpdesk', urgent:true, text:`Escalated help desk query: ${h.alumnusName} (${h.campus}) — ${h.category}.`});
+  });
+  STATE.helpdesk.filter(h=> h.followUpDate && (h.status==='Open'||h.status==='In Progress')).forEach(h=>{
+    const d = new Date(h.followUpDate);
+    const days = Math.round((d-today)/86400000);
+    if(days>=0 && days<=3) notes.push({id:'hdfu-'+h.id, type:'helpdesk', urgent:days<=1, text:`Help desk follow-up due for ${h.alumnusName} in ${days===0?'today':days+' day(s)'} (${h.campus}).`});
+  });
   return notes;
 }
 function renderNotifBell(){
@@ -1079,6 +1161,10 @@ function globalSearch(q){
   STATE.coordinators.forEach(c=>{
     if([c.name,c.department,c.campus,c.email].filter(Boolean).some(v=>v.toLowerCase().includes(q)))
       results.push({kind:'Coordinator', label:c.name, sub:`${c.department} · ${c.campus}`, tab:'coordinators'});
+  });
+  STATE.helpdesk.forEach(h=>{
+    if([h.alumnusName,h.email,h.mobile,h.regNo,h.enrollmentNo,h.campus,h.category].filter(Boolean).some(v=>v.toLowerCase().includes(q)))
+      results.push({kind:'Help Desk Visit', label:`${h.alumnusName} — ${h.category}`, sub:`${h.campus} · ${h.status}`, tab:'helpdesk'});
   });
   DEPARTMENTS.forEach(d=>{ if(d.toLowerCase().includes(q)) results.push({kind:'Department', label:d, sub:'Department', tab:'campus'}); });
   const companies = new Set(STATE.sessions.map(s=>s.company).filter(Boolean));
@@ -1124,6 +1210,7 @@ function render(){
     campus: renderCampus,
     leaderboards: renderLeaderboards,
     sessions: renderSessions,
+    helpdesk: renderHelpdesk,
     whatsapp: renderWhatsapp,
     coordinators: renderCoordinators,
     trends: renderTrends,
@@ -1447,6 +1534,302 @@ function renderFeedbackAnalytics(root){
   renderLeaderboardBlock(document.getElementById('fbWorst'), f.worst.map(s=>({name:`${s.topic} — ${s.speaker}`, val:Number((s.avg||0).toFixed(2))})));
 }
 
+/* ---------- ALUMNI HELP DESK ---------- */
+function hdStatusTag(status){
+  const cls = status==='Resolved'?'tag-live':(status==='Escalated'?'tag-danger':(status==='Closed'?'tag-none':'tag-warn'));
+  return `<span class="tag ${cls}">${status}</span>`;
+}
+function hdFilteredRows(){
+  let rows = STATE.helpdesk.slice();
+  if(STATE.hdStatusFilter!=='All') rows = rows.filter(h=>h.status===STATE.hdStatusFilter);
+  if(STATE.hdCampusFilter!=='All') rows = rows.filter(h=>h.campus===STATE.hdCampusFilter);
+  if(STATE.hdCategoryFilter!=='All') rows = rows.filter(h=>h.category===STATE.hdCategoryFilter);
+  const q = STATE.hdSearch.trim().toLowerCase();
+  if(q) rows = rows.filter(h=> [h.alumnusName,h.email,h.mobile,h.regNo,h.enrollmentNo].filter(Boolean).some(v=>v.toLowerCase().includes(q)));
+  return rows.sort((a,b)=> new Date(b.visitDate)-new Date(a.visitDate));
+}
+function helpdeskAnalytics(){
+  const rows = STATE.helpdesk;
+  const byStatus = {}; HD_STATUSES.forEach(s=> byStatus[s]=0);
+  rows.forEach(h=> byStatus[h.status] = (byStatus[h.status]||0)+1);
+  const byCampus = {}; rows.forEach(h=> byCampus[h.campus] = (byCampus[h.campus]||0)+1);
+  const byCategory = {}; rows.forEach(h=> byCategory[h.category] = (byCategory[h.category]||0)+1);
+  const referrals = rows.filter(h=> h.counsellingFor==='Referral' || h.referralStudentName).length;
+  const resolvedWithDates = rows.filter(h=> (h.status==='Resolved'||h.status==='Closed') && h.visitDate);
+  const avgFeedback = avg(rows.filter(h=>h.feedbackRating!==null && h.feedbackRating!==undefined), 'feedbackRating');
+  return { total: rows.length, byStatus, byCampus, byCategory, referrals, resolvedCount: resolvedWithDates.length, avgFeedback };
+}
+function alumniVisitHistory(entry){
+  if(!entry) return [];
+  return STATE.helpdesk.filter(h=> h.id!==entry.id && (
+    (entry.email && h.email===entry.email) ||
+    (entry.mobile && h.mobile===entry.mobile) ||
+    (entry.regNo && h.regNo===entry.regNo) ||
+    (entry.enrollmentNo && h.enrollmentNo===entry.enrollmentNo)
+  )).sort((a,b)=> new Date(b.visitDate)-new Date(a.visitDate));
+}
+function renderHelpdesk(root){
+  const a = helpdeskAnalytics();
+  root.innerHTML = `
+    <div class="section-title-row">
+      <h2>Alumni Help Desk</h2>
+      ${STATE.isAdmin? `<button class="btn btn-maroon btn-sm no-print" id="addHelpdesk">+ Register Visit</button>`:''}
+    </div>
+    <div class="kpi-grid">
+      <div class="kpi-card"><div class="kpi-label">Total Visits</div><div class="kpi-value">${a.total}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Open</div><div class="kpi-value">${a.byStatus['Open']||0}</div></div>
+      <div class="kpi-card"><div class="kpi-label">In Progress</div><div class="kpi-value">${a.byStatus['In Progress']||0}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Resolved</div><div class="kpi-value">${a.byStatus['Resolved']||0}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Escalated</div><div class="kpi-value">${a.byStatus['Escalated']||0}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Referrals Generated</div><div class="kpi-value">${a.referrals}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Avg Alumni Feedback</div><div class="kpi-value">${a.avgFeedback===null?'—':a.avgFeedback.toFixed(1)+'/5'}</div></div>
+    </div>
+    <div class="section-title-row"><h2>Campus-wise Visits</h2></div>
+    <div class="card" id="hdCampusBlock"></div>
+    <div class="section-title-row"><h2>Help Desk Category Breakdown</h2></div>
+    <div class="card" id="hdCategoryBlock"></div>
+
+    <div class="section-title-row"><h2>Visit Registration Log</h2></div>
+    <div class="filters no-print">
+      <input type="text" id="hdSearch" placeholder="🔍 Search name, email, mobile, reg./enrollment no." value="${STATE.hdSearch}">
+      <select id="hdStatusFilter"><option value="All">All Status</option>${HD_STATUSES.map(s=>`<option ${STATE.hdStatusFilter===s?'selected':''}>${s}</option>`).join('')}</select>
+      <select id="hdCampusFilter"><option value="All">All Campuses</option>${HD_CAMPUSES.map(c=>`<option ${STATE.hdCampusFilter===c?'selected':''}>${c}</option>`).join('')}</select>
+      <select id="hdCategoryFilter"><option value="All">All Categories</option>${HD_CATEGORIES.map(c=>`<option ${STATE.hdCategoryFilter===c?'selected':''}>${c}</option>`).join('')}</select>
+    </div>
+    <div class="table-wrap" id="hdTable"></div>
+  `;
+  if(STATE.isAdmin) document.getElementById('addHelpdesk').addEventListener('click', ()=>openHelpdeskModal());
+  document.getElementById('hdSearch').addEventListener('input', e=>{ STATE.hdSearch=e.target.value; renderHelpdeskTable(); });
+  document.getElementById('hdStatusFilter').addEventListener('change', e=>{ STATE.hdStatusFilter=e.target.value; renderHelpdeskTable(); });
+  document.getElementById('hdCampusFilter').addEventListener('change', e=>{ STATE.hdCampusFilter=e.target.value; renderHelpdeskTable(); });
+  document.getElementById('hdCategoryFilter').addEventListener('change', e=>{ STATE.hdCategoryFilter=e.target.value; renderHelpdeskTable(); });
+  renderLeaderboardBlock(document.getElementById('hdCampusBlock'), Object.entries(a.byCampus).map(([k,v])=>({name:k, val:v})));
+  renderLeaderboardBlock(document.getElementById('hdCategoryBlock'), Object.entries(a.byCategory).map(([k,v])=>({name:k, val:v})));
+  renderHelpdeskTable();
+}
+function renderHelpdeskTable(){
+  const el = document.getElementById('hdTable');
+  if(!el) return;
+  const rows = hdFilteredRows();
+  if(!rows.length){ el.innerHTML = `<div class="empty"><div class="big">🛎️</div>No help desk visits match. ${STATE.isAdmin?'Register one with the button above.':''}</div>`; return; }
+  el.innerHTML = `
+    <table><thead><tr>
+      <th>Visit Date</th><th>Alumnus</th><th>Verified By</th><th>Campus</th><th>Purpose</th><th>Category</th><th>Assigned Staff</th><th>Status</th>${STATE.isAdmin?'<th></th>':''}
+    </tr></thead><tbody>
+      ${rows.map(h=>`<tr>
+        <td data-label="Visit Date">${h.visitDate||'—'}</td>
+        <td data-label="Alumnus">${h.alumnusName}</td>
+        <td data-label="Verified By">${h.verifyType||'—'}</td>
+        <td data-label="Campus">${h.campus}</td>
+        <td data-label="Purpose">${h.purpose}</td>
+        <td data-label="Category">${h.category}</td>
+        <td data-label="Assigned Staff">${h.assignedStaff||'—'}</td>
+        <td data-label="Status">${hdStatusTag(h.status)}</td>
+        ${STATE.isAdmin? `<td class="row-actions"><button class="icon-btn" onclick="openHelpdeskModal('${h.id}')">✎</button><button class="icon-btn" onclick="deleteItem('helpdesk','${h.id}')">🗑</button></td>`:''}
+      </tr>`).join('')}
+    </tbody></table>
+  `;
+}
+function openHelpdeskModal(id){
+  const h = id? STATE.helpdesk.find(x=>x.id===id): null;
+  const m = document.getElementById('modalRoot');
+  let attachments = h? JSON.parse(JSON.stringify(h.attachments||[])) : [];
+  let commLog = h? JSON.parse(JSON.stringify(h.commLog||[])) : [];
+  const history = h? alumniVisitHistory(h) : [];
+  const renderAttachments = ()=>{
+    const wrap = document.getElementById('hdAttachWrap');
+    if(!wrap) return;
+    wrap.innerHTML = attachments.length? attachments.map((d,i)=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;background:var(--bg-card-2);border-radius:8px;padding:7px 10px;margin-top:6px">
+        <span style="font-size:12.5px">📎 ${d.name} <span style="color:var(--ink-faint)">(${d.url})</span></span>
+        <button class="icon-btn" id="hdRmAtt${i}">🗑</button>
+      </div>`).join('') : `<div class="empty" style="padding:10px">No attachments added.</div>`;
+    attachments.forEach((d,i)=>{ const b=document.getElementById('hdRmAtt'+i); if(b) b.addEventListener('click', ()=>{ attachments.splice(i,1); renderAttachments(); }); });
+  };
+  const renderCommLog = ()=>{
+    const wrap = document.getElementById('hdCommWrap');
+    if(!wrap) return;
+    wrap.innerHTML = commLog.length? commLog.slice().sort((a,b)=>new Date(b.date)-new Date(a.date)).map(c=>{
+      const i = commLog.indexOf(c);
+      return `<div style="display:flex;justify-content:space-between;align-items:center;background:var(--bg-card-2);border-radius:8px;padding:7px 10px;margin-top:6px">
+        <span style="font-size:12.5px"><span class="tag tag-none">${c.type}</span> ${c.date} — ${c.note||''}</span>
+        <button class="icon-btn" id="hdRmComm${i}">🗑</button>
+      </div>`;
+    }).join('') : `<div class="empty" style="padding:10px">No communication logged yet.</div>`;
+    commLog.forEach((c,i)=>{ const b=document.getElementById('hdRmComm'+i); if(b) b.addEventListener('click', ()=>{ commLog.splice(i,1); renderCommLog(); }); });
+  };
+  m.innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
+      <div class="modal" style="max-width:720px">
+        <h2>${h?'Edit Help Desk Entry':'Register Alumni Visit'}</h2>
+        <div class="sub">Log and track alumni visits, queries and on-campus support.</div>
+
+        ${history.length? `<div class="section-title-row" style="margin-top:0"><h2 style="font-size:14px">Previous Visits (${history.length})</h2></div>
+        <div class="card" style="padding:10px 14px;margin-bottom:14px">${history.map(v=>`<div style="font-size:12.5px;padding:5px 0;border-bottom:1px solid var(--line)">${v.visitDate} — ${v.campus} · ${v.purpose} ${hdStatusTag(v.status)}</div>`).join('')}</div>`:''}
+
+        <div class="hd-msec-tabs">
+          <button type="button" class="hd-msec-btn active" data-hdsec="visit">Visit &amp; Verification</button>
+          <button type="button" class="hd-msec-btn" data-hdsec="query">Purpose &amp; Status</button>
+          <button type="button" class="hd-msec-btn" data-hdsec="meeting">Meeting &amp; Support</button>
+          <button type="button" class="hd-msec-btn" data-hdsec="counsel">Counselling &amp; Docs</button>
+          <button type="button" class="hd-msec-btn" data-hdsec="comm">Communication &amp; Feedback</button>
+        </div>
+
+        <div class="hd-msec" data-hdsec-panel="visit">
+          <div class="field-row">
+            <div class="field"><label>Alumnus / Alumna Name</label><input id="hdName" value="${h?h.alumnusName:''}"></div>
+            <div class="field"><label>Visit Date</label><input type="date" id="hdDate" value="${h?h.visitDate:''}"></div>
+          </div>
+          <div class="field"><label>Verify Using</label><select id="hdVerifyType">${HD_VERIFY_TYPES.map(v=>`<option ${h&&h.verifyType===v?'selected':''}>${v}</option>`).join('')}</select></div>
+          <div class="field-row">
+            <div class="field"><label>Registration No.</label><input id="hdRegNo" value="${h?h.regNo||'':''}"></div>
+            <div class="field"><label>Enrollment No.</label><input id="hdEnrollNo" value="${h?h.enrollmentNo||'':''}"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Email</label><input id="hdEmail" value="${h?h.email||'':''}"></div>
+            <div class="field"><label>Mobile Number</label><input id="hdMobile" value="${h?h.mobile||'':''}"></div>
+          </div>
+          <div class="field"><label>Campus Being Visited</label><select id="hdCampus">${HD_CAMPUSES.map(c=>`<option ${h&&h.campus===c?'selected':''}>${c}</option>`).join('')}</select></div>
+        </div>
+
+        <div class="hd-msec" data-hdsec-panel="query" style="display:none">
+          <div class="field-row">
+            <div class="field"><label>Purpose of Visit</label><select id="hdPurpose">${HD_PURPOSES.map(p=>`<option ${h&&h.purpose===p?'selected':''}>${p}</option>`).join('')}</select></div>
+            <div class="field"><label>Help Desk Category</label><select id="hdCategory">${HD_CATEGORIES.map(c=>`<option ${h&&h.category===c?'selected':''}>${c}</option>`).join('')}</select></div>
+          </div>
+          <div class="field"><label>Query Description</label><textarea id="hdDescription" rows="2">${h?h.description||'':''}</textarea></div>
+          <div class="field-row">
+            <div class="field"><label>Assigned Staff</label><input id="hdStaff" value="${h?h.assignedStaff||'':''}"></div>
+            <div class="field"><label>Status</label><select id="hdStatus">${HD_STATUSES.map(s=>`<option ${h&&h.status===s?'selected':(!h&&s==='Open'?'selected':'')}>${s}</option>`).join('')}</select></div>
+          </div>
+          <div class="field"><label>Resolution Notes</label><textarea id="hdResolution" rows="2">${h?h.resolutionNotes||'':''}</textarea></div>
+          <div class="field"><label>Follow-up Date</label><input type="date" id="hdFollowUp" value="${h?h.followUpDate||'':''}"></div>
+        </div>
+
+        <div class="hd-msec" data-hdsec-panel="meeting" style="display:none">
+          <div class="section-title-row" style="margin-top:0"><h2 style="font-size:14px">Meeting Details</h2></div>
+          <div class="field-row">
+            <div class="field"><label>Meeting With (Whom)</label><input id="hdMeetingWith" value="${h?h.meetingWith||'':''}" placeholder="e.g. Admissions Office"></div>
+            <div class="field"><label>Department</label><select id="hdMeetingDept"><option value="">—</option>${DEPARTMENTS.map(d=>`<option ${h&&h.meetingDept===d?'selected':''}>${d}</option>`).join('')}</select></div>
+          </div>
+          <div class="field"><label>Scheduled Time</label><input id="hdMeetingTime" value="${h?h.meetingTime||'':''}" placeholder="e.g. 3:30 PM"></div>
+
+          <div class="section-title-row"><h2 style="font-size:14px">Travel &amp; Accommodation</h2></div>
+          <div class="field"><label>Travel Assistance</label>
+            <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:4px">
+              ${HD_TRAVEL_OPTIONS.map(t=>`<label style="display:flex;align-items:center;gap:5px;font-size:12.5px;font-weight:400;text-transform:none"><input type="checkbox" class="hdTravelCk" value="${t}" ${h&&(h.travelAssistance||[]).includes(t)?'checked':''}> ${t}</label>`).join('')}
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Guest House / Accommodation Requested</label><select id="hdAccomReq"><option value="false" ${!h||!h.accommodationRequested?'selected':''}>No</option><option value="true" ${h&&h.accommodationRequested?'selected':''}>Yes</option></select></div>
+            <div class="field"><label>Accommodation Status</label><input id="hdAccomStatus" value="${h?h.accommodationStatus||'':''}" placeholder="e.g. Guest House Room 4 confirmed"></div>
+          </div>
+        </div>
+
+        <div class="hd-msec" data-hdsec-panel="counsel" style="display:none">
+          <div class="section-title-row" style="margin-top:0"><h2 style="font-size:14px">Admission Counselling &amp; Referrals</h2></div>
+          <div class="field-row">
+            <div class="field"><label>Counselling For</label><select id="hdCounsellingFor">${HD_COUNSELLING_FOR.map(c=>`<option value="${c}" ${h&&h.counsellingFor===c?'selected':''}>${c||'— Not Applicable —'}</option>`).join('')}</select></div>
+            <div class="field"><label>Campus Tour Requested</label><select id="hdTour"><option value="false" ${!h||!h.campusTourRequested?'selected':''}>No</option><option value="true" ${h&&h.campusTourRequested?'selected':''}>Yes</option></select></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Referred Student Name</label><input id="hdReferralName" value="${h?h.referralStudentName||'':''}"></div>
+            <div class="field"><label>Referral Notes</label><input id="hdReferralNotes" value="${h?h.referralNotes||'':''}"></div>
+          </div>
+
+          <div class="section-title-row"><h2 style="font-size:14px">Documents Shared</h2></div>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+            ${HD_DOCS.map(d=>`<label style="display:flex;align-items:center;gap:5px;font-size:12.5px;font-weight:400;text-transform:none"><input type="checkbox" class="hdDocCk" value="${d}" ${h&&(h.documentsShared||[]).includes(d)?'checked':''}> ${d}</label>`).join('')}
+          </div>
+
+          <div class="section-title-row"><h2 style="font-size:14px">Attachments</h2></div>
+          <div id="hdAttachWrap"></div>
+          <div class="field-row" style="margin-top:8px">
+            <div class="field"><label>Attachment Name</label><input id="hdAttName" placeholder="e.g. ID Proof.pdf"></div>
+            <div class="field"><label>Attachment URL</label><input id="hdAttUrl" placeholder="https://drive.google.com/…"></div>
+          </div>
+          <button class="btn btn-ghost btn-sm" id="hdAttAdd" type="button">+ Add Attachment</button>
+        </div>
+
+        <div class="hd-msec" data-hdsec-panel="comm" style="display:none">
+          <div class="section-title-row" style="margin-top:0"><h2 style="font-size:14px">Communication Log</h2></div>
+          <div id="hdCommWrap"></div>
+          <div class="field-row" style="margin-top:8px">
+            <div class="field"><label>Type</label><select id="hdCommType"><option>Call</option><option>Email</option><option>WhatsApp</option><option>In-Person</option><option>Meeting</option></select></div>
+            <div class="field"><label>Date</label><input type="date" id="hdCommDate"></div>
+          </div>
+          <div class="field"><label>Note</label><input id="hdCommNote" placeholder="e.g. Called to confirm follow-up"></div>
+          <button class="btn btn-ghost btn-sm" id="hdCommAdd" type="button">+ Add Communication Entry</button>
+
+          <div class="section-title-row"><h2 style="font-size:14px">Alumni Feedback</h2></div>
+          <div class="field-row">
+            <div class="field"><label>Feedback Rating (1–5)</label><select id="hdFeedbackRating"><option value="">—</option>${[5,4,3,2,1].map(n=>`<option value="${n}" ${h&&Number(h.feedbackRating)===n?'selected':''}>${n}</option>`).join('')}</select></div>
+            <div class="field"><label>Feedback Comment</label><input id="hdFeedbackComment" value="${h?h.feedbackComment||'':''}"></div>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+          <button class="btn btn-gold" id="hdSave">${h?'Save':'Register Visit'}</button>
+        </div>
+      </div>
+    </div>`;
+  document.querySelectorAll('.hd-msec-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.hd-msec-btn').forEach(b=>b.classList.toggle('active', b===btn));
+      document.querySelectorAll('.hd-msec').forEach(p=> p.style.display = p.dataset.hdsecPanel===btn.dataset.hdsec ? 'block':'none');
+    });
+  });
+  renderAttachments();
+  renderCommLog();
+  document.getElementById('hdAttAdd').addEventListener('click', ()=>{
+    const name = document.getElementById('hdAttName').value.trim();
+    const url = document.getElementById('hdAttUrl').value.trim();
+    if(!name || !url){ toast('Attachment name and URL are both required.', 'err'); return; }
+    attachments.push({name, url});
+    document.getElementById('hdAttName').value=''; document.getElementById('hdAttUrl').value='';
+    renderAttachments();
+  });
+  document.getElementById('hdCommAdd').addEventListener('click', ()=>{
+    const note = document.getElementById('hdCommNote').value.trim();
+    const date = document.getElementById('hdCommDate').value || new Date().toISOString().slice(0,10);
+    const type = document.getElementById('hdCommType').value;
+    if(!note){ toast('Add a note describing the communication.', 'err'); return; }
+    commLog.push({date, type, note});
+    document.getElementById('hdCommNote').value=''; document.getElementById('hdCommDate').value='';
+    renderCommLog();
+  });
+  document.getElementById('hdSave').addEventListener('click', async ()=>{
+    const travelAssistance = Array.from(document.querySelectorAll('.hdTravelCk:checked')).map(c=>c.value);
+    const documentsShared = Array.from(document.querySelectorAll('.hdDocCk:checked')).map(c=>c.value);
+    const data = {
+      alumnusName: document.getElementById('hdName').value.trim(), visitDate: document.getElementById('hdDate').value,
+      verifyType: document.getElementById('hdVerifyType').value,
+      regNo: document.getElementById('hdRegNo').value.trim(), enrollmentNo: document.getElementById('hdEnrollNo').value.trim(),
+      email: document.getElementById('hdEmail').value.trim(), mobile: document.getElementById('hdMobile').value.trim(),
+      campus: document.getElementById('hdCampus').value,
+      purpose: document.getElementById('hdPurpose').value, category: document.getElementById('hdCategory').value,
+      description: document.getElementById('hdDescription').value.trim(),
+      assignedStaff: document.getElementById('hdStaff').value.trim(), status: document.getElementById('hdStatus').value,
+      resolutionNotes: document.getElementById('hdResolution').value.trim(), followUpDate: document.getElementById('hdFollowUp').value,
+      meetingWith: document.getElementById('hdMeetingWith').value.trim(), meetingDept: document.getElementById('hdMeetingDept').value,
+      meetingTime: document.getElementById('hdMeetingTime').value.trim(),
+      travelAssistance, accommodationRequested: document.getElementById('hdAccomReq').value==='true',
+      accommodationStatus: document.getElementById('hdAccomStatus').value.trim(),
+      counsellingFor: document.getElementById('hdCounsellingFor').value,
+      referralStudentName: document.getElementById('hdReferralName').value.trim(), referralNotes: document.getElementById('hdReferralNotes').value.trim(),
+      campusTourRequested: document.getElementById('hdTour').value==='true',
+      documentsShared, attachments, commLog,
+      feedbackRating: document.getElementById('hdFeedbackRating').value? Number(document.getElementById('hdFeedbackRating').value): null,
+      feedbackComment: document.getElementById('hdFeedbackComment').value.trim()
+    };
+    if(!data.alumnusName || !data.visitDate){ toast('Alumnus name and visit date are required.', 'err'); document.querySelector('.hd-msec-btn[data-hdsec="visit"]').click(); return; }
+    if(!data.regNo && !data.enrollmentNo && !data.email && !data.mobile){ toast('Provide at least one verification detail (Reg./Enrollment No., Email or Mobile).', 'err'); document.querySelector('.hd-msec-btn[data-hdsec="visit"]').click(); return; }
+    if(h){ Object.assign(h,data); toast('Help desk entry updated.'); } else { STATE.helpdesk.push({id:uid(), ...data}); toast('Alumni visit registered.'); }
+    closeModal(); render(); await pushToBackend();
+  });
+}
+
 /* ---------- WHATSAPP CHAPTERS ---------- */
 function renderWhatsapp(root){
   const a = chapterAnalytics();
@@ -1529,15 +1912,20 @@ function renderWhatsapp(root){
 
   const grid = document.getElementById('chapterGrid');
   if(!STATE.chapters.length){ grid.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="big">💬</div>No chapters added yet.</div>`; }
-  else grid.innerHTML = STATE.chapters.slice().sort((a,b)=>b.activeMembers-a.activeMembers).map(c=>`
+  else grid.innerHTML = STATE.chapters.slice().sort((a,b)=>b.activeMembers-a.activeMembers).map(c=>{
+    const alumniCount = alumniInChapter(c.region).length;
+    return `
     <div class="mini-card">
       <h3>${c.region} ${c.active===false?'<span class="tag tag-none">Inactive</span>':'<span class="tag tag-live">Active</span>'} ${!c.admin?'<span class="tag tag-danger">No Admin</span>':''}</h3>
       <div class="meta">${c.campus}${c.department?' · '+c.department:'<span style="color:var(--danger)"> · Department missing</span>'} · Admin: ${c.admin||'—'}<br>
       <span class="num">${(c.activeMembers||0).toLocaleString()}</span> active members${c.inactiveMembers?` · ${c.inactiveMembers} inactive`:''}${c.pendingInvites?` · ${c.pendingInvites} pending invite(s)`:''}</div>
       ${c.link? `<a class="li-link" href="${c.link}" target="_blank" rel="noopener">💬 Open Chapter Link ↗</a>`:''}
-      ${STATE.isAdmin? `<div class="row-actions no-print" style="margin-top:8px"><button class="icon-btn" onclick="openChapterModal('${c.id}')">✎</button><button class="icon-btn" onclick="deleteItem('chapters','${c.id}')">🗑</button></div>`:''}
+      <div class="row-actions no-print" style="margin-top:8px">
+        <button class="btn btn-sm btn-ghost" onclick="openChapterAlumniModal('${c.id}')">👥 View Alumni (${alumniCount})</button>
+        ${STATE.isAdmin? `<button class="icon-btn" onclick="openChapterModal('${c.id}')">✎</button><button class="icon-btn" onclick="deleteItem('chapters','${c.id}')">🗑</button>`:''}
+      </div>
     </div>
-  `).join('');
+  `;}).join('');
 
   const histEl = document.getElementById('wHistoryTable');
   histEl.innerHTML = a.allHistory.length? `
@@ -2106,6 +2494,202 @@ function openChapterModal(id){
   });
 }
 
+/* ---------- ALUMNI DIRECTORY PER WHATSAPP CHAPTER (view / add / edit / transfer / delete) ---------- */
+function openChapterAlumniModal(chapterId){
+  const chap = STATE.chapters.find(x=>x.id===chapterId);
+  if(!chap) return;
+  const m = document.getElementById('modalRoot');
+  const list = alumniInChapter(chap.region);
+  m.innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
+      <div class="modal" style="max-width:920px">
+        <div class="section-title-row" style="margin:0 0 4px">
+          <h2 style="margin:0">👥 Alumni in "${chap.region}"</h2>
+          ${STATE.isAdmin? `<button class="btn btn-maroon btn-sm no-print" id="addAlumniBtn">+ Add Alumni</button>`:''}
+        </div>
+        <div class="sub">${chap.campus}${chap.department?' · '+chap.department:''} — ${list.length} alumni added to this WhatsApp chapter</div>
+        <div class="table-wrap">
+          <table><thead><tr>
+            <th>Name</th><th>Course/Dept</th><th>Batch</th><th>Company</th><th>Designation</th><th>City</th><th>Mobile</th><th>LinkedIn</th>${STATE.isAdmin?'<th>Actions</th>':''}
+          </tr></thead>
+          <tbody>${list.length? list.map(a=>`
+            <tr>
+              <td data-label="Name">${a.name||'—'}</td>
+              <td data-label="Course/Dept">${a.courseDept||'—'}${a.branchDesig?` · ${a.branchDesig}`:''}</td>
+              <td data-label="Batch">${a.leavingYear||'—'}</td>
+              <td data-label="Company">${a.company||'—'}</td>
+              <td data-label="Designation">${a.designation||'—'}</td>
+              <td data-label="City">${a.city||'—'}</td>
+              <td data-label="Mobile">${a.mobile||'—'}</td>
+              <td data-label="LinkedIn">${a.linkedin?`<a class="li-link" href="${a.linkedin}" target="_blank" rel="noopener">Profile ↗</a>`:'—'}</td>
+              ${STATE.isAdmin? `<td data-label="Actions"><div class="row-actions">
+                <button class="icon-btn" title="Edit" onclick="openAlumniFormModal('${chap.id}','${a.id}')">✎</button>
+                <button class="icon-btn" title="Transfer" onclick="openAlumniTransferModal('${a.id}')">⇄</button>
+                <button class="icon-btn" title="Delete" onclick="openAlumniDeletePreview('${a.id}')">🗑</button>
+              </div></td>` : ''}
+            </tr>`).join('') : `<tr><td colspan="${STATE.isAdmin?9:8}"><div class="empty">No alumni added to this chapter yet.</div></td></tr>`}
+          </tbody></table>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" onclick="closeModal()">Close</button>
+        </div>
+      </div>
+    </div>`;
+  if(STATE.isAdmin){
+    document.getElementById('addAlumniBtn').addEventListener('click', ()=>openAlumniFormModal(chap.id));
+  }
+}
+
+function openAlumniFormModal(chapterId, alumniId){
+  const chap = STATE.chapters.find(x=>x.id===chapterId);
+  if(!chap) return;
+  const a = alumniId? STATE.alumniWapp.find(x=>x.id===alumniId): null;
+  const m = document.getElementById('modalRoot');
+  m.innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
+      <div class="modal" style="max-width:620px">
+        <h2>${a?'Edit Alumni':'Add Alumni'}</h2>
+        <div class="sub">Chapter: ${chap.region} (${chap.campus})</div>
+        <div class="field-row">
+          <div class="field"><label>Name</label><input id="alName" value="${a?a.name||'':''}" placeholder="Full name"></div>
+          <div class="field"><label>Email Address</label><input id="alEmail" value="${a?a.email||'':''}" placeholder="name@example.com"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Mobile Number</label><input id="alMobile" value="${a?a.mobile||'':''}" placeholder="+91 …"></div>
+          <div class="field"><label>Leaving Year</label><input id="alYear" value="${a?a.leavingYear||'':''}" placeholder="e.g. 2023"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Course/Department</label><select id="alCourseDept">${DEPARTMENTS.map(d=>`<option ${a&&a.courseDept===d?'selected':''}>${d}</option>`).join('')}</select></div>
+          <div class="field"><label>Branch/Designation</label><input id="alBranchDesig" value="${a?a.branchDesig||'':''}" placeholder="e.g. B.Tech CSE"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Campus</label><select id="alCampus">${CAMPUSES.map(c=>`<option ${a&&a.campus===c?'selected':''}>${c}</option>`).join('')}</select></div>
+          <div class="field"><label>City</label><input id="alCity" value="${a?a.city||'':''}" placeholder="Current city"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Company</label><input id="alCompany" value="${a?a.company||'':''}"></div>
+          <div class="field"><label>Designation</label><input id="alDesignation" value="${a?a.designation||'':''}" placeholder="Current job title"></div>
+        </div>
+        <div class="field"><label>LinkedIn</label><input id="alLinkedin" value="${a?a.linkedin||'':''}" placeholder="https://linkedin.com/in/…"></div>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" onclick="openChapterAlumniModal('${chap.id}')">Cancel</button>
+          <button class="btn btn-gold" id="alSave">${a?'Save Changes':'Add Alumni'}</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('alSave').addEventListener('click', async ()=>{
+    const data = {
+      name: document.getElementById('alName').value.trim(),
+      email: document.getElementById('alEmail').value.trim(),
+      mobile: document.getElementById('alMobile').value.trim(),
+      leavingYear: document.getElementById('alYear').value.trim(),
+      courseDept: document.getElementById('alCourseDept').value,
+      branchDesig: document.getElementById('alBranchDesig').value.trim(),
+      campus: document.getElementById('alCampus').value,
+      city: document.getElementById('alCity').value.trim(),
+      company: document.getElementById('alCompany').value.trim(),
+      designation: document.getElementById('alDesignation').value.trim(),
+      linkedin: document.getElementById('alLinkedin').value.trim(),
+      chapter: chap.region
+    };
+    if(!data.name){ toast('Name is required.', 'err'); return; }
+    if(a){
+      Object.assign(a, data);
+      toast('Alumni entry updated.');
+    } else {
+      STATE.alumniWapp.push({id:uid(), ...data});
+      logChapterHistory(chap.region, {date:new Date().toISOString().slice(0,10), type:'join', count:1,
+        note:`${data.name} added to the alumni directory`, performedBy:'', reason:'', previousChapter:'', newChapter:''});
+      toast('Alumni added.');
+    }
+    openChapterAlumniModal(chap.id);
+    render();
+    await pushToBackend();
+  });
+}
+
+function openAlumniTransferModal(alumniId){
+  const a = STATE.alumniWapp.find(x=>x.id===alumniId);
+  if(!a) return;
+  const currentChapter = a.chapter;
+  const m = document.getElementById('modalRoot');
+  const otherChapters = STATE.chapters.filter(c=>c.region!==currentChapter);
+  m.innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
+      <div class="modal" style="max-width:480px">
+        <h2>Transfer Alumni</h2>
+        <div class="sub">Move ${a.name} from "${currentChapter||'—'}" to another WhatsApp chapter.</div>
+        <div class="field">
+          <label>New Chapter</label>
+          <select id="alNewChapter">
+            <option value="">— Select chapter —</option>
+            ${otherChapters.map(c=>`<option value="${c.region}">${c.region} (${c.campus})</option>`).join('')}
+          </select>
+        </div>
+        <div class="field"><label>Reason / Note (optional)</label><input id="alTransferReason" placeholder="e.g. Relocated to a new city"></div>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+          <button class="btn btn-gold" id="alTransferSave">Transfer</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('alTransferSave').addEventListener('click', async ()=>{
+    const newChapter = document.getElementById('alNewChapter').value;
+    const reason = document.getElementById('alTransferReason').value.trim();
+    if(!newChapter){ toast('Please select a chapter to transfer to.', 'err'); return; }
+    const date = new Date().toISOString().slice(0,10);
+    logChapterHistory(currentChapter, {date, type:'transfer', count:1, note:`${a.name} transferred out`, performedBy:'', reason, previousChapter:currentChapter, newChapter});
+    logChapterHistory(newChapter, {date, type:'transfer', count:1, note:`${a.name} transferred in`, performedBy:'', reason, previousChapter:currentChapter, newChapter});
+    a.chapter = newChapter;
+    toast(`${a.name} transferred to ${newChapter}.`);
+    closeModal(); render(); await pushToBackend();
+  });
+}
+
+function openAlumniDeletePreview(alumniId){
+  const a = STATE.alumniWapp.find(x=>x.id===alumniId);
+  if(!a) return;
+  const chapterId = STATE.chapters.find(c=>c.region===a.chapter)?.id;
+  const m = document.getElementById('modalRoot');
+  const row = (label,val)=> `<div style="padding:8px 0;border-bottom:1px solid var(--line)"><div style="font-size:11px;color:var(--ink-dim);text-transform:uppercase;letter-spacing:.3px">${label}</div><div style="font-size:13.5px;margin-top:2px">${val||'—'}</div></div>`;
+  m.innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
+      <div class="modal" style="max-width:520px">
+        <h2>Remove Alumni — Preview</h2>
+        <div class="sub">Review the entry below before permanently removing it from the directory.</div>
+        <div class="card" style="background:var(--bg-card-2);padding:6px 14px;margin-bottom:14px">
+          ${row('Name', a.name)}
+          ${row('Email Address', a.email)}
+          ${row('Mobile Number', a.mobile)}
+          ${row('Leaving Year', a.leavingYear)}
+          ${row('Course/Department', a.courseDept)}
+          ${row('Branch/Designation', a.branchDesig)}
+          ${row('Campus', a.campus)}
+          ${row('City', a.city)}
+          ${row('Company', a.company)}
+          ${row('Designation', a.designation)}
+          ${row('LinkedIn', a.linkedin)}
+          ${row('Chapter', a.chapter)}
+        </div>
+        <div class="field"><label>Reason for Removal</label><input id="alDelReason" placeholder="e.g. Left the WhatsApp group / duplicate entry"></div>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" onclick="${chapterId?`openChapterAlumniModal('${chapterId}')`:'closeModal()'}">Cancel</button>
+          <button class="btn btn-danger" id="alDelConfirm" style="border:1px solid var(--danger)">Confirm Delete</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('alDelConfirm').addEventListener('click', async ()=>{
+    const reason = document.getElementById('alDelReason').value.trim();
+    STATE.alumniWapp = STATE.alumniWapp.filter(x=>x.id!==alumniId);
+    if(a.chapter){
+      logChapterHistory(a.chapter, {date:new Date().toISOString().slice(0,10), type:'exit', count:1,
+        note:`${a.name} removed from the alumni directory`, performedBy:'', reason:reason||'Not specified', previousChapter:'', newChapter:''});
+    }
+    toast('Alumni entry removed.');
+    closeModal(); render(); await pushToBackend();
+  });
+}
+
 function openCoordModal(id){
   const c = id? STATE.coordinators.find(x=>x.id===id): null;
   const m = document.getElementById('modalRoot');
@@ -2303,6 +2887,41 @@ function openPinModal(){
 /* =========================================================================
    EXCEL IMPORT / EXPORT
 ========================================================================= */
+// Maps internal alumniWapp field keys to the exact column headers used in the
+// "Alumni in Wapp" sheet, so export/import round-trips against the same
+// spreadsheet layout the alumni relations team already maintains.
+const ALUMNI_WAPP_FIELDS = [
+  {key:'name', header:'Name'},
+  {key:'email', header:'Email Address'},
+  {key:'leavingYear', header:'Leaving Year'},
+  {key:'courseDept', header:'Course/Department'},
+  {key:'branchDesig', header:'Branch/Designation'},
+  {key:'campus', header:'Campus'},
+  {key:'city', header:'City'},
+  {key:'linkedin', header:'LinkedIn'},
+  {key:'company', header:'Company'},
+  {key:'designation', header:'Designation'},
+  {key:'mobile', header:'Mobile Number'},
+  {key:'chapter', header:'Chapter'},
+];
+function alumniWappToExcelRow(a){
+  const row = {};
+  ALUMNI_WAPP_FIELDS.forEach(f=> row[f.header] = a[f.key] ?? '');
+  return row;
+}
+function excelRowToAlumniWapp(row){
+  // Case/whitespace-tolerant lookup so a manually-maintained sheet with
+  // slightly different header casing/spacing still imports correctly.
+  const keys = Object.keys(row);
+  const findVal = (header)=>{
+    const norm = s => String(s).trim().toLowerCase();
+    const k = keys.find(k=>norm(k)===norm(header));
+    return k!==undefined ? row[k] : '';
+  };
+  const out = {};
+  ALUMNI_WAPP_FIELDS.forEach(f=> out[f.key] = String(findVal(f.header) ?? '').trim());
+  return out;
+}
 function flattenForExcel(list, nestedFields){
   return (list||[]).map(item=>{
     const copy = {...item};
@@ -2327,6 +2946,8 @@ function exportExcel(){
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(flattenForExcel(STATE.sessions, ['documents','feedbackEntries'])), "Sessions");
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(flattenForExcel(STATE.chapters, ['history'])), "WhatsApp Chapters");
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(flattenForExcel(STATE.coordinators, ['achievements','metricsHistory'])), "Coordinators");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(STATE.alumniWapp.map(alumniWappToExcelRow)), "Alumni in Wapp");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(flattenForExcel(STATE.helpdesk, ['travelAssistance','documentsShared','attachments','commLog'])), "Alumni Help Desk");
   XLSX.writeFile(wb, `GEHU_LinkedIn_CommandCenter_${STATE.month}.xlsx`);
   toast('Excel export ready.');
 }
@@ -2341,6 +2962,8 @@ function importExcel(file){
       let sessions = getSheet("Sessions"); if(sessions){ sessions.forEach(s=>{ if(!s.id) s.id=uid(); }); STATE.sessions = unflattenFromExcel(sessions, ['documents','feedbackEntries']); }
       let chapters = getSheet("WhatsApp Chapters"); if(chapters){ chapters.forEach(c=>{ if(!c.id) c.id=uid(); }); STATE.chapters = unflattenFromExcel(chapters, ['history']); }
       let coordinators = getSheet("Coordinators"); if(coordinators){ coordinators.forEach(c=>{ if(!c.id) c.id=uid(); }); STATE.coordinators = unflattenFromExcel(coordinators, ['achievements','metricsHistory']); }
+      let alumniWapp = getSheet("Alumni in Wapp"); if(alumniWapp){ STATE.alumniWapp = alumniWapp.map(row=>({id:uid(), ...excelRowToAlumniWapp(row)})); }
+      let helpdesk = getSheet("Alumni Help Desk"); if(helpdesk){ helpdesk.forEach(hd=>{ if(!hd.id) hd.id=uid(); }); STATE.helpdesk = unflattenFromExcel(helpdesk, ['travelAssistance','documentsShared','attachments','commLog']); }
       toast('Excel import complete.');
       render(); pushToBackend();
     }catch(err){ console.error(err); toast('Import failed — check the file format.', 'err'); }
