@@ -59,43 +59,68 @@ button:active{ color:inherit; }
 ::-webkit-scrollbar-track{ background:transparent; }
 
 /* ===== Layout shell ===== */
-.app{ max-width:1400px; margin:0 auto; padding:0 22px 60px; }
+.shell{ display:flex; align-items:stretch; min-height:100vh; }
 
-/* ===== Header ===== */
-.topbar{
-  display:flex; align-items:center; justify-content:space-between;
-  padding:18px 24px; gap:16px; flex-wrap:wrap;
-  background:linear-gradient(155deg, var(--navy-2) 0%, var(--navy) 100%);
-  border-radius:14px; margin-top:18px;
-  box-shadow:0 8px 24px rgba(16,28,51,0.18);
-  position:sticky; top:12px; z-index:50;
+/* ----- Sidebar (left navbar) ----- */
+.sidebar{
+  width:272px; flex-shrink:0; position:sticky; top:0; height:100vh; overflow-y:auto;
+  display:flex; flex-direction:column;
+  background:linear-gradient(180deg, var(--navy-2) 0%, var(--navy) 100%);
+  box-shadow:6px 0 28px rgba(16,28,51,0.16);
+  z-index:80; padding:22px 14px 16px;
 }
-.brand{ display:flex; align-items:center; gap:14px; }
+.sidebar::-webkit-scrollbar{ width:6px; }
+.sidebar::-webkit-scrollbar-thumb{ background:rgba(255,255,255,0.18); }
+.sidebar-close{ display:none; }
+.brand{ display:flex; align-items:center; gap:13px; padding:2px 8px 20px; margin-bottom:14px; border-bottom:1px solid rgba(255,255,255,0.12); }
 .brand-mark{
-  width:46px; height:46px; border-radius:11px;
+  width:44px; height:44px; border-radius:11px;
   background:linear-gradient(155deg, var(--gold) 0%, #a9821c 100%);
   display:flex; align-items:center; justify-content:center;
-  font-family:'Fraunces',serif; font-weight:700; font-size:20px; color:var(--navy);
+  font-family:'Fraunces',serif; font-weight:700; font-size:19px; color:var(--navy);
   border:1px solid rgba(255,255,255,0.25);
-  flex-shrink:0;
+  flex-shrink:0; overflow:hidden;
 }
-.brand-text h1{ font-size:22px; font-weight:600; letter-spacing:0.2px; line-height:1.15; color:#fff;}
-.brand-text .sub{ font-size:12.5px; color:rgba(255,255,255,0.65); letter-spacing:0.4px; text-transform:uppercase; margin-top:2px; display:flex; align-items:center; gap:7px;}
-.topbar .btn{ border-color:rgba(255,255,255,0.28); background:transparent; color:#fff; }
-.topbar .btn:hover{ border-color:var(--gold); background:rgba(255,255,255,0.08); }
-.topbar .btn:active{ color:#fff; }
-.topbar .btn-gold{ background:linear-gradient(155deg, var(--gold) 0%, #a9821c 100%); color:var(--navy); border:none; }
-.topbar .btn-gold:active{ color:var(--navy); }
-.topbar .admin-badge{ background:rgba(255,255,255,0.1); border-color:rgba(255,255,255,0.25); }
-.btn-light{ background:#fff; color:var(--navy); border:1.5px solid #fff; font-weight:600; }
-.btn-light:hover{ background:#f0f2f5; transform:translateY(-1px); }
+.brand-mark img{ width:100%; height:100%; object-fit:cover; }
+.brand-text h1{ font-size:16.5px; font-weight:600; letter-spacing:0.2px; line-height:1.25; color:#fff;}
+.brand-text .sub{ font-size:10.5px; color:rgba(255,255,255,0.6); letter-spacing:0.3px; text-transform:uppercase; margin-top:3px; display:flex; align-items:center; gap:6px;}
+.sidebar-section-label{ font-size:10.5px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:rgba(255,255,255,0.35); padding:14px 12px 6px; }
+.sidebar-foot{ font-size:10.5px; color:rgba(255,255,255,0.32); padding:16px 10px 4px; border-top:1px solid rgba(255,255,255,0.1); margin-top:auto; line-height:1.6; }
+.sidebar-scrim{ display:none; }
+
+/* ----- Main content area ----- */
+.main-area{ flex:1 1 auto; min-width:0; }
+.main-inner{ max-width:1280px; margin:0 auto; padding:22px 26px 60px; }
+
+/* ===== Topbar (actions strip, sits above content) ===== */
+.topbar{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 20px; gap:16px; flex-wrap:wrap;
+  background:var(--bg-card);
+  border:1px solid var(--line); border-radius:14px;
+  box-shadow:0 4px 18px rgba(16,28,51,0.06);
+  position:sticky; top:12px; z-index:50;
+}
+.topbar-left{ display:flex; align-items:center; gap:12px; min-width:0; }
+.menu-toggle{
+  display:none; background:var(--bg-card-2); border:1px solid var(--line-strong); color:var(--ink);
+  width:38px; height:38px; border-radius:9px; align-items:center; justify-content:center; font-size:16px; flex-shrink:0;
+}
+.page-title{ font-size:15px; font-weight:600; color:var(--ink); white-space:nowrap; }
+.page-title .pulse{ margin-right:8px; }
+.admin-badge{
+  font-size:11px; padding:6px 10px; border-radius:20px; background:rgba(63,174,106,0.12); color:var(--success);
+  border:1px solid rgba(63,174,106,0.35); font-weight:600; letter-spacing:.3px; display:flex; align-items:center; gap:6px;
+}
+.btn-light{ background:#fff; color:var(--navy); border:1.5px solid var(--line-strong); font-weight:600; }
+.btn-light:hover{ background:#f0f2f5; border-color:var(--gold); transform:translateY(-1px); }
 .btn-light:active{ color:var(--navy); }
 .btn-navy-solid{ background:var(--navy); color:#fff; border:1px solid rgba(255,255,255,0.15); font-weight:600; }
-.btn-navy-solid:hover{ filter:brightness(1.25); }
+.btn-navy-solid:hover{ filter:brightness(1.25); background:var(--navy); border-color:rgba(255,255,255,0.15); color:#fff; }
 .btn-navy-solid:active{ color:#fff; }
-.btn-refresh{ background:transparent; color:#fff; border:1px solid rgba(255,255,255,0.28); padding:10px 12px; border-radius:10px; display:inline-flex; align-items:center; gap:7px; font-size:13.5px; font-weight:500; transition:all .15s ease; }
-.btn-refresh:hover{ border-color:var(--gold); background:rgba(255,255,255,0.08); }
-.btn-refresh:active{ color:#fff; }
+.btn-refresh{ background:var(--bg-card-2); color:var(--ink); border:1px solid var(--line-strong); padding:10px 12px; border-radius:10px; display:inline-flex; align-items:center; gap:7px; font-size:13.5px; font-weight:500; transition:all .15s ease; }
+.btn-refresh:hover{ border-color:var(--gold); background:#fff; }
+.btn-refresh:active{ color:var(--ink); }
 .btn-refresh .refresh-icon{ display:inline-block; transition:transform .5s ease; }
 .btn-refresh.spinning .refresh-icon{ animation:spin .7s linear infinite; }
 @keyframes spin{ from{ transform:rotate(0deg);} to{ transform:rotate(360deg);} }
@@ -118,10 +143,10 @@ button:active{ color:inherit; }
 .btn:hover{ border-color:var(--gold); background:var(--bg-card-2); transform:translateY(-1px); }
 .btn:active{ color:var(--ink); }
 .btn-gold{ background:linear-gradient(155deg, var(--gold) 0%, #a9821c 100%); color:#1c1608; border:none; font-weight:600;}
-.btn-gold:hover{ filter:brightness(1.08); }
+.btn-gold:hover{ filter:brightness(1.08); background:linear-gradient(155deg, var(--gold) 0%, #a9821c 100%); border:none; }
 .btn-gold:active{ color:#1c1608; }
 .btn-maroon{ background:linear-gradient(155deg, var(--maroon-light) 0%, var(--maroon) 100%); color:#fff; border:none; font-weight:600;}
-.btn-maroon:hover{ filter:brightness(1.1); }
+.btn-maroon:hover{ filter:brightness(1.15); background:linear-gradient(155deg, var(--maroon-light) 0%, var(--maroon) 100%); border:none; color:#fff; }
 .btn-maroon:active{ color:#fff; }
 .btn-ghost{ background:transparent; }
 .btn-ghost:active{ color:inherit; }
@@ -129,17 +154,13 @@ button:active{ color:inherit; }
 .btn-danger{ color:var(--danger); border-color:rgba(214,82,74,0.4); }
 .btn-danger:hover{ border-color:var(--danger); background:rgba(214,82,74,0.08); }
 .btn-danger:active{ color:var(--danger); }
-.admin-badge{
-  font-size:11px; padding:6px 10px; border-radius:20px; background:rgba(63,174,106,0.12); color:var(--success);
-  border:1px solid rgba(63,174,106,0.35); font-weight:600; letter-spacing:.3px; display:flex; align-items:center; gap:6px;
-}
 
 /* ===== Search + Notifications ===== */
 #searchBoxWrap input{
-  border:1px solid rgba(255,255,255,0.28); background:rgba(255,255,255,0.08); color:#fff;
+  border:1px solid var(--line-strong); background:var(--bg-card-2); color:var(--ink);
   padding:9px 12px; border-radius:9px; font-size:13px;
 }
-#searchBoxWrap input::placeholder{ color:rgba(255,255,255,0.55); }
+#searchBoxWrap input::placeholder{ color:var(--ink-faint); }
 .btn.icon-only{ padding:9px 12px; position:relative; }
 .notif-dot{
   position:absolute; top:-5px; right:-5px; background:var(--danger); color:#fff; font-size:10px; font-weight:700;
@@ -215,7 +236,23 @@ button:active{ color:inherit; }
   .ticker-winner::after{ display:none; }
 }
 
-/* ===== Tabs ===== */
+/* ===== Responsive sidebar (drawer on small screens) ===== */
+@media (max-width:980px){
+  .menu-toggle{ display:flex; }
+  .sidebar{
+    position:fixed; left:0; top:0; height:100vh; transform:translateX(-100%);
+    transition:transform .25s ease; width:280px; max-width:82vw;
+  }
+  .shell.sidebar-open .sidebar{ transform:translateX(0); }
+  .sidebar-close{ display:flex; margin-left:auto; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2); color:#fff; width:32px; height:32px; border-radius:8px; align-items:center; justify-content:center; font-size:15px; }
+  .sidebar-scrim{
+    display:none; position:fixed; inset:0; background:rgba(8,10,16,0.5); z-index:70;
+  }
+  .shell.sidebar-open .sidebar-scrim{ display:block; }
+  .main-inner{ padding:16px 16px 50px; }
+}
+
+/* ===== Tabs (base style — reused by in-page sub-tabs on light cards) ===== */
 .tabs{
   display:flex; gap:6px; margin-top:20px; overflow-x:auto; padding-bottom:4px;
   border-bottom:1px solid var(--line);
@@ -226,6 +263,48 @@ button:active{ color:inherit; }
 }
 .tab-btn:hover, .tab-btn:focus, .tab-btn:focus-visible, .tab-btn:active{ background:transparent; color:var(--ink-dim) !important; outline:none; }
 .tab-btn.active, .tab-btn.active:hover, .tab-btn.active:focus, .tab-btn.active:active{ color:var(--navy) !important; font-weight:700; border-bottom-color:var(--gold); }
+
+/* ===== Sidebar nav (left navbar — overrides the base tab styling above) ===== */
+.sidebar .tabs{
+  display:flex; flex-direction:column; gap:2px; overflow-y:auto; overflow-x:hidden;
+  flex:1 1 auto; margin-top:0; padding-bottom:0; border-bottom:none;
+}
+.sidebar .tab-btn{
+  display:flex; align-items:center; gap:11px; width:100%; text-align:left;
+  background:transparent; border:none; color:#ffffff; padding:10.5px 13px; font-size:13.5px; font-weight:500;
+  border-bottom:none; border-radius:9px; white-space:normal; line-height:1.3; transition:all .15s;
+}
+.sidebar .tab-btn .tab-icon{ font-size:14.5px; width:20px; text-align:center; flex-shrink:0; opacity:.9; }
+.sidebar .tab-btn:hover, .sidebar .tab-btn:focus, .sidebar .tab-btn:focus-visible{ background:rgba(255,255,255,0.07); color:#fff !important; outline:none; }
+.sidebar .tab-btn:active{ color:#fff !important; }
+.sidebar .tab-btn.active, .sidebar .tab-btn.active:hover, .sidebar .tab-btn.active:focus, .sidebar .tab-btn.active:active{
+  background:linear-gradient(155deg, var(--gold) 0%, #a9821c 100%); color:var(--navy) !important; font-weight:700; border-bottom-color:transparent;
+  box-shadow:0 4px 14px rgba(214,167,42,0.25);
+}
+
+/* ----- Quick Actions block inside the sidebar ----- */
+.sidebar-actions{ display:flex; flex-direction:column; gap:9px; padding:6px 8px 8px; flex-shrink:0; }
+.sidebar-actions .btn, .sidebar-actions .btn-refresh{ width:100%; justify-content:flex-start; }
+.sidebar-actions #adminBadge .admin-badge{ width:100%; justify-content:center; box-sizing:border-box; }
+.sidebar .btn{ border-color:rgba(255,255,255,0.16); background:rgba(255,255,255,0.05); color:#fff; }
+.sidebar .btn:hover{ border-color:var(--gold); background:rgba(255,255,255,0.1); transform:none; }
+.sidebar .btn:active{ color:#fff; }
+.sidebar .btn-ghost{ background:rgba(255,255,255,0.05); }
+.sidebar .btn-light{ background:#fff; color:var(--navy); border-color:#fff; }
+.sidebar .btn-light:hover{ background:#f0f2f5; border-color:var(--gold); }
+.sidebar .btn-light:active{ color:var(--navy); }
+.sidebar .btn-navy-solid{ background:rgba(255,255,255,0.08); color:#fff; border:1px solid rgba(255,255,255,0.18); }
+.sidebar .btn-navy-solid:hover{ background:rgba(255,255,255,0.15); filter:none; }
+.sidebar .btn-refresh{ background:rgba(255,255,255,0.05); color:#fff; border-color:rgba(255,255,255,0.16); }
+.sidebar .btn-refresh:hover{ background:rgba(255,255,255,0.1); border-color:var(--gold); }
+.sidebar #searchBoxWrap{ width:100%; }
+.sidebar #searchBoxWrap input{
+  background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.18); color:#fff;
+  padding:9px 12px; border-radius:9px; font-size:13px; width:100%; box-sizing:border-box;
+}
+.sidebar #searchBoxWrap input::placeholder{ color:rgba(255,255,255,0.4); }
+.sidebar #searchBoxWrap input:focus{ outline:none; border-color:var(--gold); }
+.sidebar .dropdown-panel{ width:100%; left:0; right:auto; box-sizing:border-box; }
 
 /* ===== Filters row ===== */
 .filters{ display:flex; gap:10px; margin:18px 0; flex-wrap:wrap; align-items:center; }
@@ -404,11 +483,16 @@ tbody tr:hover{ background:rgba(255,255,255,0.02); }
 /* ===== Loading overlay ===== */
 .loading-overlay{
   position:fixed; inset:0; z-index:500; display:flex; align-items:center; justify-content:center;
-  background:linear-gradient(155deg, var(--navy-2) 0%, var(--navy) 100%);
-  transition:opacity .35s ease, visibility .35s ease;
+  background:
+    linear-gradient(155deg, rgba(24,39,71,0.8) 0%, rgba(16,28,51,0.8) 100%),
+    url('logo1.png');
+  background-size: cover, cover;
+  background-position: center, center;
+  background-repeat: no-repeat, no-repeat;
+  transition:opacity 1s ease, visibility 1s ease;
 }
 .loading-overlay.hidden{ opacity:0; visibility:hidden; pointer-events:none; }
-.loading-box{ width:100%; max-width:360px; padding:0 24px; text-align:center; }
+.loading-box{ width:80%; max-width:300px; padding:0 24px; text-align:center; }
 .loading-box .loading-mark{
   width:52px; height:52px; margin:0 auto 18px; border-radius:12px;
   background:linear-gradient(155deg, var(--gold) 0%, #a9821c 100%);
@@ -446,17 +530,41 @@ tbody tr:hover{ background:rgba(255,255,255,0.02); }
 </head>
 <body>
 
-<div class="app" id="app">
-  <!-- HEADER -->
-  <div class="topbar">
+<div class="shell" id="app">
+
+  <div class="sidebar-scrim no-print" id="sidebarScrim"></div>
+
+  <!-- SIDEBAR / LEFT NAVBAR -->
+  <aside class="sidebar no-print" id="sidebar">
     <div class="brand">
-      <div class="brand-mark">GE</div>
-      <div class="brand-text">
-        <h1>GEAA- Performance Dashboard </h1>
-        <div class="sub"><span class="pulse"></span> Live · Department's Performance Tracker</div>
+      <div class="brand-mark">
+        <img src="logo.png" alt="GEHU Logo" onerror="this.style.display='none'; this.parentElement.textContent='GE';">
       </div>
+      <div class="brand-text">
+        <h1>GEAA Performance Dashboard</h1>
+        <div class="sub"><span class="pulse"></span> Live Tracker</div>
+      </div>
+      <button class="sidebar-close" id="sidebarClose" title="Close menu">✕</button>
     </div>
-    <div class="top-actions no-print">
+
+    <nav class="tabs" id="tabs">
+      <button class="tab-btn active" data-tab="overview" data-label="Home"><span class="tab-icon">🏠</span>Home</button>
+      <button class="tab-btn" data-tab="campus" data-label="Campus View"><span class="tab-icon">🏫</span>Campus View</button>
+      <button class="tab-btn" data-tab="leaderboards" data-label="Leaderboards"><span class="tab-icon">🏆</span>Leaderboards</button>
+      <button class="tab-btn" data-tab="sessions" data-label="Alumni Sessions"><span class="tab-icon">🎤</span>Alumni Sessions</button>
+      <button class="tab-btn" data-tab="calendar" data-label="Activity Calendar"><span class="tab-icon">📅</span>Activity Calendar</button>
+      <button class="tab-btn" data-tab="activityreport" data-label="Activity Report"><span class="tab-icon">📋</span>Activity Report</button>
+      <button class="tab-btn" data-tab="helpdesk" data-label="Alumni Help Desk"><span class="tab-icon">🛎️</span>Alumni Help Desk</button>
+      <button class="tab-btn" data-tab="whatsapp" data-label="WhatsApp Chapters"><span class="tab-icon">💬</span>WhatsApp Chapters</button>
+      <button class="tab-btn" data-tab="coordinators" data-label="Coordinators"><span class="tab-icon">👥</span>Coordinators</button>
+      <button class="tab-btn" data-tab="trends" data-label="Trends"><span class="tab-icon">📈</span>Trends</button>
+      <button class="tab-btn" data-tab="executive" data-label="Executive Summary"><span class="tab-icon">📊</span>Executive Summary</button>
+      <button class="tab-btn" data-tab="data" data-label="Data Entry"><span class="tab-icon">🗂️</span>Data Entry</button>
+    </nav>
+
+    <div class="sidebar-section-label no-print">Quick Actions</div>
+    <div class="sidebar-actions no-print">
+      <div id="searchBoxWrap" style="position:relative"></div>
       <div id="notifBellWrap" style="position:relative"></div>
       <span id="adminBadge"></span>
       <button class="btn-refresh" id="btnRefresh" title="Refresh data from the live sheet"><span class="refresh-icon">⟳</span> Refresh</button>
@@ -466,35 +574,35 @@ tbody tr:hover{ background:rgba(255,255,255,0.02); }
       <button class="btn btn-gold" id="btnPin">🔒 SPOC Access</button>
       <input type="file" id="xlsxFileInput" accept=".xlsx,.xls" style="display:none">
     </div>
-  </div>
 
-  <!-- WINNER TICKER -->
-  <div class="ticker-wrap no-print">
-    <div class="ticker-winner" id="tickerWinner"></div>
-    <div class="ticker-scroll">
-      <div class="ticker-track" id="tickerTrack"></div>
+    <div class="sidebar-foot">GEHU LinkedIn Command Center<br>Data syncs to Google Sheets · Built for SPOC-led reporting</div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <div class="main-area">
+    <div class="main-inner">
+
+      <!-- TOPBAR -->
+      <div class="topbar">
+        <div class="topbar-left">
+          <button class="menu-toggle no-print" id="menuToggle" title="Menu">☰</button>
+          <div class="page-title" id="pageTitle"><span class="pulse"></span>GEAA Performance Dashboard</div>
+        </div>
+      </div>
+
+      <!-- WINNER TICKER -->
+      <div class="ticker-wrap no-print">
+        <div class="ticker-winner" id="tickerWinner"></div>
+        <div class="ticker-scroll">
+          <div class="ticker-track" id="tickerTrack"></div>
+        </div>
+      </div>
+
+      <div id="content"></div>
+
+      <div class="foot no-print">GEHU LinkedIn Command Center · Data syncs to Google Sheets via Apps Script · Built for SPOC-led reporting</div>
     </div>
   </div>
-
-  <!-- TABS -->
-  <div class="tabs no-print" id="tabs">
-    <button class="tab-btn active" data-tab="overview">Home</button>
-    <button class="tab-btn" data-tab="campus">Campus View</button>
-    <button class="tab-btn" data-tab="leaderboards">Leaderboards</button>
-    <button class="tab-btn" data-tab="sessions">Alumni Sessions</button>
-    <button class="tab-btn" data-tab="calendar">Activity Calendar</button>
-    <button class="tab-btn" data-tab="activityreport">Activity Report</button>
-    <button class="tab-btn" data-tab="helpdesk">Alumni Help Desk</button>
-    <button class="tab-btn" data-tab="whatsapp">WhatsApp Chapters</button>
-    <button class="tab-btn" data-tab="coordinators">Coordinators</button>
-    <button class="tab-btn" data-tab="trends">Trends</button>
-    <button class="tab-btn" data-tab="executive">Executive Summary</button>
-    <button class="tab-btn" data-tab="data">Data Entry</button>
-  </div>
-
-  <div id="content"></div>
-
-  <div class="foot no-print">GEHU LinkedIn Command Center · Data syncs to Google Sheets via Apps Script · Built for SPOC-led reporting</div>
 </div>
 
 <div id="modalRoot"></div>
@@ -502,10 +610,9 @@ tbody tr:hover{ background:rgba(255,255,255,0.02); }
 
 <div class="loading-overlay" id="loadingOverlay">
   <div class="loading-box">
-    <div class="loading-mark">GE</div>
-    <div class="loading-title">Syncing LinkedIn Command Center…</div>
+    <div class="loading-title">Syncing Command Center…</div>
     <div class="loading-bar-track"><div class="loading-bar-fill"></div></div>
-    <div class="loading-sub" id="loadingSub">Connecting to the live Google Sheet</div>
+    <div class="loading-sub" id="loadingSub">Connecting to the live Sheet</div>
   </div>
 </div>
 
@@ -1209,7 +1316,7 @@ function renderNotifBell(){
   const notes = computeNotifications();
   const urgentCount = notes.filter(n=>n.urgent).length;
   el.innerHTML = `
-    <button class="btn btn-ghost icon-only" id="notifBellBtn" title="Notifications">🔔${notes.length? `<span class="notif-dot">${notes.length}</span>`:''}</button>
+    <button class="btn btn-ghost" id="notifBellBtn" title="Notifications">🔔 Notifications${notes.length? `<span class="notif-dot">${notes.length}</span>`:''}</button>
     ${STATE.notifOpen? `
     <div class="dropdown-panel" id="notifPanel">
       <div class="dropdown-head">Notifications ${urgentCount?`<span class="tag tag-none">${urgentCount} urgent</span>`:''}</div>
@@ -1252,7 +1359,7 @@ function renderSearchBox(){
   if(!el) return;
   el.innerHTML = `
     <div style="position:relative">
-      <input type="text" id="globalSearchInput" placeholder="🔍 Search alumni, coordinators, companies…" value="${STATE.searchQuery}" style="width:230px">
+      <input type="text" id="globalSearchInput" placeholder="🔍 Search alumni, coordinators…" value="${STATE.searchQuery}" style="width:100%">
       ${STATE.searchOpen && STATE.searchQuery.trim()? `
       <div class="dropdown-panel" id="searchPanel">
         ${(()=>{ const r = globalSearch(STATE.searchQuery); return r.length? r.map(x=>`<div class="dropdown-item search-result" data-tab="${x.tab}"><b>${x.label}</b><br><span style="color:var(--ink-faint);font-size:11.5px">${x.kind} · ${x.sub}</span></div>`).join('') : `<div class="dropdown-item" style="color:var(--ink-faint)">No matches.</div>`; })()}
@@ -1280,6 +1387,9 @@ function render(){
   renderNotifBell();
   renderSearchBox();
   document.querySelectorAll('.tab-btn').forEach(b=> b.classList.toggle('active', b.dataset.tab===STATE.activeTab));
+  const activeBtn = document.querySelector(`.tab-btn[data-tab="${STATE.activeTab}"]`);
+  const pageTitleEl = document.getElementById('pageTitle');
+  if(activeBtn && pageTitleEl) pageTitleEl.innerHTML = `<span class="pulse"></span>${activeBtn.dataset.label || activeBtn.textContent.trim()}`;
   const c = document.getElementById('content');
   const renderers = {
     overview: renderOverview,
@@ -1510,6 +1620,25 @@ function renderCampusTable(){
 }
 
 /* ---------- LEADERBOARDS ---------- */
+// Per-campus report submission leaderboard: ranks each of the 4 campuses by
+// how many activities have a post-activity report filed (reportSummary /
+// reportAttendance / reportOutcomes) vs. how many activities they ran, for
+// the selected month. This view doesn't exist anywhere else in the app.
+function campusReportTotals(monthStr){
+  const acts = STATE.activities.filter(a=> a.startDate && a.startDate.slice(0,7)===monthStr);
+  const map = {};
+  CAMPUSES.forEach(c=> map[c] = {campus:c, activities:0, filed:0, pending:0});
+  acts.forEach(a=>{
+    const hasReport = !!(a.reportSummary || a.reportAttendance || a.reportOutcomes);
+    const campusesForActivity = (a.campuses && a.campuses.length)? a.campuses : CAMPUSES;
+    campusesForActivity.forEach(c=>{
+      if(!map[c]) return;
+      map[c].activities += 1;
+      if(hasReport) map[c].filed += 1; else map[c].pending += 1;
+    });
+  });
+  return CAMPUSES.map(c=> map[c]).sort((a,b)=> b.filed-a.filed);
+}
 function renderLeaderboards(root){
   root.innerHTML = `
     <div class="filters no-print">${monthSelectHtml('lbMonth')}${refreshButtonHtml()}</div>
@@ -1519,6 +1648,8 @@ function renderLeaderboards(root){
     <div class="card" id="lbDept"></div>
     <div class="section-title-row"><h2>📈 Fastest Growing (Month over Month)</h2><span class="hint">By follower growth per department/course</span></div>
     <div class="card" id="lbGrowth"></div>
+    <div class="section-title-row"><h2>📑 Reports Leaderboard</h2><span class="hint">Activity reports filed by campus — ${monthLabel(STATE.month)}</span></div>
+    <div class="card" id="lbReports"></div>
   `;
   document.getElementById('lbMonth').addEventListener('change', e=>{ STATE.month=e.target.value; render(); });
   wireRefreshButton();
@@ -1527,6 +1658,33 @@ function renderLeaderboards(root){
   const growthRows = recordsForMonth(STATE.month,'All').map(r=>({name:`${r.campus} · ${r.department}`, val:growthFor(r)}))
     .filter(r=>r.val!==null).sort((a,b)=>b.val-a.val).slice(0,10);
   renderLeaderboardBlock(document.getElementById('lbGrowth'), growthRows.length?growthRows:[]);
+  renderReportsLeaderboard(document.getElementById('lbReports'));
+}
+function renderReportsLeaderboard(el){
+  const rows = campusReportTotals(STATE.month);
+  if(!rows.some(r=>r.activities)){ el.innerHTML = `<div class="empty"><div class="big">📑</div>No activity data for this month.</div>`; return; }
+  const maxVal = Math.max(...rows.map(r=>r.activities), 1);
+  el.innerHTML = rows.map((r,i)=>{
+    const pct = r.activities? Math.round((r.filed/r.activities)*100) : null;
+    const barPct = Math.max(4,(r.activities/maxVal)*100);
+    const tagClass = pct===null? 'tag-none' : pct===100? 'tag-live' : pct>=50? 'tag-warn' : 'tag-danger';
+    const tagText = pct===null? 'No activities' : `${pct}% filed`;
+    return `
+      <div class="lb-row">
+        <span class="rank-pill ${i===0?'r1':i===1?'r2':i===2?'r3':''}">${i+1}</span>
+        <span class="lb-name" title="${r.campus}">${r.campus}</span>
+        <span class="lb-bar-track"><span class="lb-bar-fill" data-w="${barPct}"></span></span>
+        <span class="tag ${tagClass}" style="white-space:nowrap">${tagText}</span>
+      </div>
+      <div style="font-size:11.5px;color:var(--ink-dim);padding:0 10px 10px 50px;margin-top:-6px">
+        ${r.filed} of ${r.activities} activit${r.activities===1?'y':'ies'} reported this month${r.pending? ` · <span style="color:var(--danger)">${r.pending} pending</span>` : ''}
+      </div>`;
+  }).join('');
+  requestAnimationFrame(()=>{
+    requestAnimationFrame(()=>{
+      el.querySelectorAll('.lb-bar-fill').forEach(f=>{ f.style.width = f.dataset.w + '%'; });
+    });
+  });
 }
 
 /* ---------- ALUMNI SESSIONS ---------- */
@@ -3833,8 +3991,13 @@ function generateCustomReport(sectionIds, orientation, filters){
 ========================================================================= */
 async function init(){
   document.querySelectorAll('.tab-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=>{ STATE.activeTab = btn.dataset.tab; STATE.deptSearch=''; render(); });
+    btn.addEventListener('click', ()=>{ STATE.activeTab = btn.dataset.tab; STATE.deptSearch=''; render(); closeSidebar(); });
   });
+  const shellEl = document.getElementById('app');
+  document.getElementById('menuToggle').addEventListener('click', ()=> shellEl.classList.add('sidebar-open'));
+  document.getElementById('sidebarClose').addEventListener('click', closeSidebar);
+  document.getElementById('sidebarScrim').addEventListener('click', closeSidebar);
+  function closeSidebar(){ shellEl.classList.remove('sidebar-open'); }
   document.getElementById('btnPin').addEventListener('click', openPinModal);
   document.getElementById('btnPdf').addEventListener('click', openReportModal);
   document.getElementById('btnXlsxExport').addEventListener('click', exportExcel);
