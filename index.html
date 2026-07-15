@@ -620,7 +620,68 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhw3xrD5j5_7_daYbpC
 const ADMIN_PIN = "1111";     // change this to your SPOC PIN
 const INSTITUTE_NAME = "Graphic Era Hill University";
 const CAMPUSES = ["Graphic Era (Deemed to be University)", "GEHU Dehradun", "GEHU Bhimtal", "GEHU Haldwani"];
-const DEPARTMENTS = ["CSE","ECE","Mechanical","Civil","MBA","BBA","Pharmacy","Biotech","Law","Hotel Management"];
+const DEPARTMENTS = ["Computer Science & Engineering","Information Technology","Electronics & Communication Engineering","Electrical Engineering","Mechanical Engineering","Civil Engineering","Petroleum Engineering","Biotechnology","Applied Sciences","Management","Commerce","Computer Applications","Hotel Management","Hospitality & Tourism","Agriculture","Forestry","Environmental Science","Microbiology","Food Technology","Life Sciences","Nursing","Pharmacy","Law","Humanities","Journalism & Mass Communication","Animation & Multimedia","Fashion Design","Interior Design","Fine Arts","Liberal Arts","Mathematics","Physics","Chemistry","Zoology","Botany","Economics"];
+const COURSES_BY_DEPT = {
+  "Computer Science & Engineering": ["B.Tech CSE","B.Tech CSE (AI & ML)","B.Tech CSE (Data Science)","B.Tech CSE (Cyber Security)","M.Tech CSE","Ph.D."],
+  "Information Technology": ["B.Tech IT","M.Tech IT"],
+  "Electronics & Communication Engineering": ["B.Tech ECE","M.Tech ECE"],
+  "Electrical Engineering": ["B.Tech EE","M.Tech EE"],
+  "Mechanical Engineering": ["B.Tech ME","M.Tech ME"],
+  "Civil Engineering": ["B.Tech Civil","M.Tech Civil"],
+  "Petroleum Engineering": ["B.Tech Petroleum"],
+  "Biotechnology": ["B.Tech Biotechnology","M.Sc Biotechnology"],
+  "Applied Sciences": ["B.Sc Physics","B.Sc Chemistry","B.Sc Mathematics","M.Sc","Ph.D."],
+  "Management": ["BBA","BBA (Business Analytics)","MBA","Integrated MBA","Ph.D."],
+  "Commerce": ["B.Com","B.Com (Hons.)","M.Com"],
+  "Computer Applications": ["BCA","MCA"],
+  "Hotel Management": ["BHM","MHM"],
+  "Hospitality & Tourism": ["BTTM"],
+  "Agriculture": ["B.Sc Agriculture","M.Sc Agriculture"],
+  "Forestry": ["B.Sc Forestry"],
+  "Environmental Science": ["B.Sc Environmental Science","M.Sc Environmental Science"],
+  "Microbiology": ["B.Sc Microbiology","M.Sc Microbiology"],
+  "Food Technology": ["B.Sc Food Technology"],
+  "Life Sciences": ["B.Sc Life Sciences"],
+  "Nursing": ["B.Sc Nursing","GNM","ANM"],
+  "Pharmacy": ["D.Pharm","B.Pharm","M.Pharm"],
+  "Law": ["BA LLB","BBA LLB","LLB","LLM"],
+  "Humanities": ["BA English","BA Psychology","BA Sociology","MA English","MA Psychology"],
+  "Journalism & Mass Communication": ["BAJMC","MAJMC"],
+  "Animation & Multimedia": ["B.Sc Animation, VFX & Gaming"],
+  "Fashion Design": ["B.Des Fashion Design"],
+  "Interior Design": ["B.Des Interior Design"],
+  "Fine Arts": ["BFA"],
+  "Liberal Arts": ["BA Liberal Arts"],
+  "Mathematics": ["B.Sc Mathematics","M.Sc Mathematics"],
+  "Physics": ["B.Sc Physics","M.Sc Physics"],
+  "Chemistry": ["B.Sc Chemistry","M.Sc Chemistry"],
+  "Zoology": ["B.Sc Zoology","M.Sc Zoology"],
+  "Botany": ["B.Sc Botany","M.Sc Botany"],
+  "Economics": ["BA Economics","MA Economics"]
+};
+function deptOptionsHtml(selected){
+  const inList = DEPARTMENTS.includes(selected);
+  return DEPARTMENTS.map(d=>`<option ${d===selected?'selected':''}>${d}</option>`).join('') + `<option value="Other" ${selected && !inList ? 'selected':''}>Other</option>`;
+}
+function courseOptionsHtml(dept, selected){
+  const list = COURSES_BY_DEPT[dept] || [];
+  const inList = list.includes(selected);
+  return list.map(c=>`<option ${c===selected?'selected':''}>${c}</option>`).join('') + `<option value="Other" ${selected && !inList ? 'selected':''}>Other</option>`;
+}
+function setupOtherToggle(selectId, otherId){
+  const sel = document.getElementById(selectId), oth = document.getElementById(otherId);
+  if(!sel || !oth) return;
+  const update = ()=>{ oth.style.display = sel.value==='Other' ? 'block' : 'none'; };
+  sel.addEventListener('change', update); update();
+}
+function setupCourseDeptLink(deptSelId, courseSelId, courseOtherId, currentCourseVal){
+  const deptSel = document.getElementById(deptSelId), courseSel = document.getElementById(courseSelId), courseOther = document.getElementById(courseOtherId);
+  function toggleCourseOther(){ if(courseOther) courseOther.style.display = courseSel.value==='Other' ? 'block':'none'; }
+  function rebuild(keepVal){ courseSel.innerHTML = courseOptionsHtml(deptSel.value, keepVal); toggleCourseOther(); }
+  deptSel.addEventListener('change', ()=> rebuild(''));
+  courseSel.addEventListener('change', toggleCourseOther);
+  rebuild(currentCourseVal);
+}
 const SESSION_TYPES = ["Guest Lecture","Panel Discussion","Webinar","Mentorship Circle","Workshop","Fireside Chat","Career Talk"];
 const ACHIEVEMENT_TYPES = ["Professional Achievement","Personal Achievement","Award & Recognition","Certification","Promotion","Publication","Research Contribution","Special Contribution to Alumni Relations","Appreciation Letter"];
 const REPORT_SECTIONS = [
@@ -2046,7 +2107,8 @@ function openActivityModal(id){
           <div class="field"><label>Start Date</label><input type="date" id="acStart" value="${a?a.startDate||'':''}"></div>
           <div class="field"><label>End Date (optional)</label><input type="date" id="acEnd" value="${a?a.endDate||'':''}"></div>
         </div>
-        <div class="field"><label>Department (optional)</label><select id="acDept"><option value="All">All Departments</option>${DEPARTMENTS.map(d=>`<option ${a&&a.department===d?'selected':''}>${d}</option>`).join('')}</select></div>
+        <div class="field"><label>Department (optional)</label><select id="acDept"><option value="All">All Departments</option>${deptOptionsHtml(a&&a.department!=='All'?a.department:'')}</select>
+          <input id="acDeptOther" style="display:none;margin-top:6px" placeholder="Enter department name" value="${a&&a.department&&a.department!=='All'&&!DEPARTMENTS.includes(a.department)?a.department:''}"></div>
         <div class="field"><label>Owner / Coordinator</label><input id="acOwner" value="${a?a.owner||'':''}" placeholder="e.g. SPOC name"></div>
         <div class="field">
           <label>Campuses Covered</label>
@@ -2061,6 +2123,7 @@ function openActivityModal(id){
         </div>
       </div>
     </div>`;
+  setupOtherToggle('acDept','acDeptOther');
   document.getElementById('acSave').addEventListener('click', async ()=>{
     const campuses = Array.from(document.querySelectorAll('.acCampus:checked')).map(cb=>cb.value);
     const data = {
@@ -2069,7 +2132,7 @@ function openActivityModal(id){
       status: document.getElementById('acStatus').value,
       startDate: document.getElementById('acStart').value,
       endDate: document.getElementById('acEnd').value,
-      department: document.getElementById('acDept').value,
+      department: document.getElementById('acDept').value==='Other' ? document.getElementById('acDeptOther').value.trim() : document.getElementById('acDept').value,
       owner: document.getElementById('acOwner').value.trim(),
       campuses,
       description: document.getElementById('acDesc').value.trim(),
@@ -2397,7 +2460,8 @@ function openHelpdeskModal(id){
           <div class="section-title-row" style="margin-top:0"><h2 style="font-size:14px">Meeting Details</h2></div>
           <div class="field-row">
             <div class="field"><label>Meeting With (Whom)</label><input id="hdMeetingWith" value="${h?h.meetingWith||'':''}" placeholder="e.g. Admissions Office"></div>
-            <div class="field"><label>Department</label><select id="hdMeetingDept"><option value="">—</option>${DEPARTMENTS.map(d=>`<option ${h&&h.meetingDept===d?'selected':''}>${d}</option>`).join('')}</select></div>
+            <div class="field"><label>Department</label><select id="hdMeetingDept"><option value="">—</option>${deptOptionsHtml(h?h.meetingDept:'')}</select>
+              <input id="hdMeetingDeptOther" style="display:none;margin-top:6px" placeholder="Enter department" value="${h&&h.meetingDept&&!DEPARTMENTS.includes(h.meetingDept)?h.meetingDept:''}"></div>
           </div>
           <div class="field"><label>Scheduled Time</label><input id="hdMeetingTime" value="${h?h.meetingTime||'':''}" placeholder="e.g. 3:30 PM"></div>
 
@@ -2469,6 +2533,7 @@ function openHelpdeskModal(id){
   });
   renderAttachments();
   renderCommLog();
+  setupOtherToggle('hdMeetingDept','hdMeetingDeptOther');
   document.getElementById('hdAttAdd').addEventListener('click', ()=>{
     const name = document.getElementById('hdAttName').value.trim();
     const url = document.getElementById('hdAttUrl').value.trim();
@@ -2499,7 +2564,7 @@ function openHelpdeskModal(id){
       description: document.getElementById('hdDescription').value.trim(),
       assignedStaff: document.getElementById('hdStaff').value.trim(), status: document.getElementById('hdStatus').value,
       resolutionNotes: document.getElementById('hdResolution').value.trim(), followUpDate: document.getElementById('hdFollowUp').value,
-      meetingWith: document.getElementById('hdMeetingWith').value.trim(), meetingDept: document.getElementById('hdMeetingDept').value,
+      meetingWith: document.getElementById('hdMeetingWith').value.trim(), meetingDept: document.getElementById('hdMeetingDept').value==='Other' ? document.getElementById('hdMeetingDeptOther').value.trim() : document.getElementById('hdMeetingDept').value,
       meetingTime: document.getElementById('hdMeetingTime').value.trim(),
       travelAssistance, accommodationRequested: document.getElementById('hdAccomReq').value==='true',
       accommodationStatus: document.getElementById('hdAccomStatus').value.trim(),
@@ -2933,8 +2998,10 @@ function openRecordModal(id){
           <div class="field"><label>Campus</label><select id="mCampus">${CAMPUSES.map(c=>`<option ${rec&&rec.campus===c?'selected':''}>${c}</option>`).join('')}</select></div>
         </div>
         <div class="field-row">
-          <div class="field"><label>Department</label><select id="mDept">${DEPARTMENTS.map(d=>`<option ${rec&&rec.department===d?'selected':''}>${d}</option>`).join('')}</select></div>
-          <div class="field"><label>Course</label><input id="mCourse" value="${rec?rec.course:''}" placeholder="e.g. B.Tech CSE"></div>
+          <div class="field"><label>Department</label><select id="mDept">${deptOptionsHtml(rec?rec.department:'')}</select>
+            <input id="mDeptOther" style="display:none;margin-top:6px" placeholder="Enter department name" value="${rec && rec.department && !DEPARTMENTS.includes(rec.department)?rec.department:''}"></div>
+          <div class="field"><label>Course</label><select id="mCourse"></select>
+            <input id="mCourseOther" style="display:none;margin-top:6px" placeholder="Enter course name" value="${rec?rec.course:''}"></div>
         </div>
         <div class="field-row">
           <div class="field"><label>Followers</label><input type="number" id="mFollowers" value="${rec?rec.followers:0}"></div>
@@ -2953,12 +3020,14 @@ function openRecordModal(id){
       </div>
     </div>
   `;
+  setupOtherToggle('mDept','mDeptOther');
+  setupCourseDeptLink('mDept','mCourse','mCourseOther', rec?rec.course:'');
   document.getElementById('mSave').addEventListener('click', async ()=>{
     const data = {
       month: normalizeMonth(document.getElementById('mMonth').value) || STATE.month,
       campus: document.getElementById('mCampus').value,
-      department: document.getElementById('mDept').value,
-      course: document.getElementById('mCourse').value.trim() || document.getElementById('mDept').value,
+      department: document.getElementById('mDept').value==='Other' ? document.getElementById('mDeptOther').value.trim() : document.getElementById('mDept').value,
+      course: document.getElementById('mCourse').value==='Other' ? document.getElementById('mCourseOther').value.trim() : document.getElementById('mCourse').value,
       followers: Number(document.getElementById('mFollowers').value)||0,
       connections: Number(document.getElementById('mConnections').value)||0,
       posts: Number(document.getElementById('mPosts').value)||0,
@@ -3013,7 +3082,8 @@ function openSessionModal(id){
         </div>
         <div class="field-row">
           <div class="field"><label>Campus</label><select id="sCampus">${CAMPUSES.map(c=>`<option ${s&&s.campus===c?'selected':''}>${c}</option>`).join('')}</select></div>
-          <div class="field"><label>Department</label><select id="sDept">${DEPARTMENTS.map(d=>`<option ${s&&s.department===d?'selected':''}>${d}</option>`).join('')}</select></div>
+          <div class="field"><label>Department</label><select id="sDept">${deptOptionsHtml(s?s.department:'')}</select>
+            <input id="sDeptOther" style="display:none;margin-top:6px" placeholder="Enter department name" value="${s&&s.department&&!DEPARTMENTS.includes(s.department)?s.department:''}"></div>
         </div>
         <div class="field-row">
           <div class="field"><label>Alumni Batch</label><input id="sBatch" value="${s?s.batch||'':''}" placeholder="e.g. 2019-2023"></div>
@@ -3044,6 +3114,7 @@ function openSessionModal(id){
       </div>
     </div>`;
   renderDocs();
+  setupOtherToggle('sDept','sDeptOther');
   document.getElementById('docAdd').addEventListener('click', ()=>{
     const name = document.getElementById('docName').value.trim();
     const url = document.getElementById('docUrl').value.trim();
@@ -3055,7 +3126,7 @@ function openSessionModal(id){
   document.getElementById('sSave').addEventListener('click', async ()=>{
     const data = { speaker:document.getElementById('sSpeaker').value.trim(), date:document.getElementById('sDate').value,
       topic:document.getElementById('sTopic').value.trim(), campus:document.getElementById('sCampus').value,
-      department:document.getElementById('sDept').value, status:document.getElementById('sStatus').value,
+      department:document.getElementById('sDept').value==='Other' ? document.getElementById('sDeptOther').value.trim() : document.getElementById('sDept').value, status:document.getElementById('sStatus').value,
       sessionType:document.getElementById('sType').value,
       batch:document.getElementById('sBatch').value.trim(), gradYear:document.getElementById('sGradYear').value.trim(),
       company:document.getElementById('sCompany').value.trim(),
@@ -3131,7 +3202,12 @@ function openChapterModal(id){
           <div class="field"><label>Campus</label><select id="cCampus">${CAMPUSES.map(x=>`<option ${c&&c.campus===x?'selected':''}>${x}</option>`).join('')}</select></div>
         </div>
         <div class="field-row">
-          <div class="field"><label>Department</label><select id="cDept"><option value="">— All / General —</option>${DEPARTMENTS.map(d=>`<option ${c&&c.department===d?'selected':''}>${d}</option>`).join('')}</select></div>
+          <div class="field"><label>Department / Chapter Scope</label><select id="cDept">
+              <option value="">— All / General —</option>
+              <option value="Regional Chapter" ${c&&c.department==='Regional Chapter'?'selected':''}>Regional Chapter (not department-specific)</option>
+              ${deptOptionsHtml(c&&c.department!=='Regional Chapter'?c.department:'')}
+            </select>
+            <input id="cDeptOther" style="display:none;margin-top:6px" placeholder="Enter department name" value="${c&&c.department&&!DEPARTMENTS.includes(c.department)&&c.department!=='Regional Chapter'?c.department:''}"></div>
           <div class="field"><label>Chapter Admin</label><input id="cAdmin" value="${c?c.admin||'':''}"></div>
         </div>
         <div class="field"><label>Admin Phone (optional)</label><input id="cAdminPhone" value="${c?c.adminPhone||'':''}"></div>
@@ -3170,6 +3246,7 @@ function openChapterModal(id){
       </div>
     </div>`;
   renderHist();
+  setupOtherToggle('cDept','cDeptOther');
   document.getElementById('histAdd').addEventListener('click', ()=>{
     const date = document.getElementById('histDate').value || currentMonthStr()+'-01';
     const type = document.getElementById('histType').value;
@@ -3191,7 +3268,7 @@ function openChapterModal(id){
   });
   document.getElementById('cSave').addEventListener('click', async ()=>{
     const data = { region:document.getElementById('cRegion').value.trim(), campus:document.getElementById('cCampus').value,
-      department:document.getElementById('cDept').value, admin:document.getElementById('cAdmin').value.trim(), adminPhone:document.getElementById('cAdminPhone').value.trim(),
+      department:document.getElementById('cDept').value==='Other' ? document.getElementById('cDeptOther').value.trim() : document.getElementById('cDept').value, admin:document.getElementById('cAdmin').value.trim(), adminPhone:document.getElementById('cAdminPhone').value.trim(),
       activeMembers:Number(document.getElementById('cMembers').value)||0, inactiveMembers:Number(document.getElementById('cInactive').value)||0,
       pendingInvites:Number(document.getElementById('cPending').value)||0,
       active:document.getElementById('cActive').value==='true',
@@ -3267,7 +3344,8 @@ function openAlumniFormModal(chapterId, alumniId){
           <div class="field"><label>Leaving Year</label><input id="alYear" value="${a?a.leavingYear||'':''}" placeholder="e.g. 2023"></div>
         </div>
         <div class="field-row">
-          <div class="field"><label>Course/Department</label><select id="alCourseDept">${DEPARTMENTS.map(d=>`<option ${a&&a.courseDept===d?'selected':''}>${d}</option>`).join('')}</select></div>
+          <div class="field"><label>Course/Department</label><select id="alCourseDept">${deptOptionsHtml(a?a.courseDept:'')}</select>
+            <input id="alCourseDeptOther" style="display:none;margin-top:6px" placeholder="Enter department" value="${a&&a.courseDept&&!DEPARTMENTS.includes(a.courseDept)?a.courseDept:''}"></div>
           <div class="field"><label>Branch/Designation</label><input id="alBranchDesig" value="${a?a.branchDesig||'':''}" placeholder="e.g. B.Tech CSE"></div>
         </div>
         <div class="field-row">
@@ -3285,13 +3363,14 @@ function openAlumniFormModal(chapterId, alumniId){
         </div>
       </div>
     </div>`;
+  setupOtherToggle('alCourseDept','alCourseDeptOther');
   document.getElementById('alSave').addEventListener('click', async ()=>{
     const data = {
       name: document.getElementById('alName').value.trim(),
       email: document.getElementById('alEmail').value.trim(),
       mobile: document.getElementById('alMobile').value.trim(),
       leavingYear: document.getElementById('alYear').value.trim(),
-      courseDept: document.getElementById('alCourseDept').value,
+      courseDept: document.getElementById('alCourseDept').value==='Other' ? document.getElementById('alCourseDeptOther').value.trim() : document.getElementById('alCourseDept').value,
       branchDesig: document.getElementById('alBranchDesig').value.trim(),
       campus: document.getElementById('alCampus').value,
       city: document.getElementById('alCity').value.trim(),
@@ -3475,7 +3554,8 @@ function openCoordModal(id){
         <h2>${c?'Edit Coordinator':'Add Coordinator'}</h2>
         <div class="field-row">
           <div class="field"><label>Name</label><input id="pName" value="${c?c.name:''}"></div>
-          <div class="field"><label>Department</label><select id="pDept">${DEPARTMENTS.map(d=>`<option ${c&&c.department===d?'selected':''}>${d}</option>`).join('')}</select></div>
+          <div class="field"><label>Department</label><select id="pDept">${deptOptionsHtml(c?c.department:'')}</select>
+            <input id="pDeptOther" style="display:none;margin-top:6px" placeholder="Enter department name" value="${c&&c.department&&!DEPARTMENTS.includes(c.department)?c.department:''}"></div>
         </div>
         <div class="field-row">
           <div class="field"><label>Campus</label><select id="pCampus">${CAMPUSES.map(x=>`<option ${c&&c.campus===x?'selected':''}>${x}</option>`).join('')}</select></div>
@@ -3519,6 +3599,7 @@ function openCoordModal(id){
         </div>
       </div>
     </div>`;
+  setupOtherToggle('pDept','pDeptOther');
   loadMonthFields(activeMonth);
   renderMetricsHistList();
   document.getElementById('metricMonth').addEventListener('change', e=>{
@@ -3548,7 +3629,7 @@ function openCoordModal(id){
   });
   document.getElementById('pSave').addEventListener('click', async ()=>{
     commitCurrentMonth();
-    const data = { name:document.getElementById('pName').value.trim(), department:document.getElementById('pDept').value,
+    const data = { name:document.getElementById('pName').value.trim(), department:document.getElementById('pDept').value==='Other' ? document.getElementById('pDeptOther').value.trim() : document.getElementById('pDept').value,
       campus:document.getElementById('pCampus').value, phone:document.getElementById('pPhone').value.trim(),
       email:document.getElementById('pEmail').value.trim(), linkedin:document.getElementById('pLinkedin').value.trim(),
       metricsHistory,
