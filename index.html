@@ -482,6 +482,8 @@ tbody tr:hover{ background:rgba(255,255,255,0.02); }
     <button class="tab-btn" data-tab="campus">Campus View</button>
     <button class="tab-btn" data-tab="leaderboards">Leaderboards</button>
     <button class="tab-btn" data-tab="sessions">Alumni Sessions</button>
+    <button class="tab-btn" data-tab="calendar">Activity Calendar</button>
+    <button class="tab-btn" data-tab="activityreport">Activity Report</button>
     <button class="tab-btn" data-tab="helpdesk">Alumni Help Desk</button>
     <button class="tab-btn" data-tab="whatsapp">WhatsApp Chapters</button>
     <button class="tab-btn" data-tab="coordinators">Coordinators</button>
@@ -511,7 +513,7 @@ tbody tr:hover{ background:rgba(255,255,255,0.02); }
 /* =========================================================================
    CONFIG
 ========================================================================= */
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzj9UICIy1D5eyOg3x16WZzlUZEhraqoElwMTiPP3Ubb018ya-9kiJrCVIHG2PsA_id/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhw3xrD5j5_7_daYbpCp7jQ63eHp_Bjovd-cdq94eIkigK8owcFt3AuxbhPLIn3CMI/exec";
 const ADMIN_PIN = "1111";     // change this to your SPOC PIN
 const INSTITUTE_NAME = "Graphic Era Hill University";
 const CAMPUSES = ["Graphic Era (Deemed to be University)", "GEHU Dehradun", "GEHU Bhimtal", "GEHU Haldwani"];
@@ -523,6 +525,7 @@ const REPORT_SECTIONS = [
   {id:'departments', label:'Department Performance'},
   {id:'coordinators', label:'Coordinator Performance'},
   {id:'sessions', label:'Alumni Sessions'},
+  {id:'activities', label:'Activity Calendar Report'},
   {id:'linkedin', label:'LinkedIn Analytics'},
   {id:'whatsapp', label:'WhatsApp Chapter Analytics'},
   {id:'feedback', label:'Feedback Analytics'},
@@ -545,6 +548,9 @@ const REPORT_CAMPUS_OPTIONS = [
   {id:'GEHU Haldwani', label:'Haldwani'},
   {id:'All', label:'Consolidated Report (All Campuses)'},
 ];
+const ACTIVITY_TYPES = ["Guest Lecture","Panel Discussion","Webinar","Workshop","Alumni Meet","LinkedIn Campaign","WhatsApp Chapter Drive","Placement Drive","Mentorship Circle","Fireside Chat","Career Talk","Convocation Outreach","Fundraising / CSR","Other"];
+const ACTIVITY_STATUSES = ["Planned","In Progress","Completed","Postponed","Cancelled"];
+const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
 /* =========================================================================
    STATE  (in-memory only — resets on reload; synced with Apps Script when reachable)
@@ -579,9 +585,18 @@ let STATE = {
   hdCategoryFilter:'All',
   hdSearch:'',
   notifLog:[],       // persisted flagged events {id, date, type, text}
+  activities:[],     // planned/annual activities: {id, title, type, campuses:[...], department, startDate, endDate, status, owner, description, createdAt,
+                     //  feedbackEntries:[{id,rating,comment,submittedBy,date}], reportSummary, reportAttendance, reportOutcomes, reportMediaLink, reportSubmittedBy, reportDate}
   searchQuery:'',
   notifOpen:false,
-  searchOpen:false
+  searchOpen:false,
+  calYear: new Date().getMonth()>=6 ? new Date().getFullYear() : new Date().getFullYear()-1, // academic-year start (Jul->Jun)
+  calCampus:'All',
+  calStatus:'All',
+  arYear:'',         // activity report filters
+  arCampus:'All',
+  arStatus:'All',
+  arType:'All'
 };
 
 function currentMonthStr(){
@@ -770,6 +785,7 @@ async function pullFromBackend(){
       STATE.notifLog = data.notifLog || STATE.notifLog;
       STATE.alumniWapp = data.alumniWapp || STATE.alumniWapp;
       STATE.helpdesk = data.helpdesk || STATE.helpdesk;
+      STATE.activities = data.activities || STATE.activities;
       STATE.lastSync = new Date();
       return true;
     }
@@ -787,7 +803,7 @@ async function pushToBackend(){
   try{
     const payload = {
       action:"save", pin: ADMIN_PIN,
-      data:{records:STATE.records, sessions:STATE.sessions, chapters:STATE.chapters, coordinators:STATE.coordinators, notifLog:STATE.notifLog, alumniWapp:STATE.alumniWapp, helpdesk:STATE.helpdesk}
+      data:{records:STATE.records, sessions:STATE.sessions, chapters:STATE.chapters, coordinators:STATE.coordinators, notifLog:STATE.notifLog, alumniWapp:STATE.alumniWapp, helpdesk:STATE.helpdesk, activities:STATE.activities}
     };
     await fetch(SCRIPT_URL, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body:JSON.stringify(payload)});
     STATE.lastSync = new Date();
@@ -1222,6 +1238,10 @@ function globalSearch(q){
     if([h.alumnusName,h.email,h.mobile,h.regNo,h.enrollmentNo,h.campus,h.category].filter(Boolean).some(v=>v.toLowerCase().includes(q)))
       results.push({kind:'Help Desk Visit', label:`${h.alumnusName} — ${h.category}`, sub:`${h.campus} · ${h.status}`, tab:'helpdesk'});
   });
+  STATE.activities.forEach(a=>{
+    if([a.title,a.type,a.owner,...(a.campuses||[])].filter(Boolean).some(v=>v.toLowerCase().includes(q)))
+      results.push({kind:'Planned Activity', label:a.title, sub:`${a.type||''} · ${a.startDate||''}`, tab:'calendar'});
+  });
   DEPARTMENTS.forEach(d=>{ if(d.toLowerCase().includes(q)) results.push({kind:'Department', label:d, sub:'Department', tab:'campus'}); });
   const companies = new Set(STATE.sessions.map(s=>s.company).filter(Boolean));
   companies.forEach(co=>{ if(co.toLowerCase().includes(q)) results.push({kind:'Company', label:co, sub:'Alumni employer', tab:'sessions'}); });
@@ -1266,6 +1286,8 @@ function render(){
     campus: renderCampus,
     leaderboards: renderLeaderboards,
     sessions: renderSessions,
+    calendar: renderActivityCalendar,
+    activityreport: renderActivityReport,
     helpdesk: renderHelpdesk,
     whatsapp: renderWhatsapp,
     coordinators: renderCoordinators,
@@ -1607,6 +1629,438 @@ function renderFeedbackAnalytics(root){
   renderLeaderboardBlock(document.getElementById('fbMonthly'), f.monthlyTrend.map(m=>({name:monthLabel(m.month), val:Number((m.avg||0).toFixed(2))})));
   renderLeaderboardBlock(document.getElementById('fbBest'), f.best.map(s=>({name:`${s.topic} — ${s.speaker}`, val:Number((s.avg||0).toFixed(2))})));
   renderLeaderboardBlock(document.getElementById('fbWorst'), f.worst.map(s=>({name:`${s.topic} — ${s.speaker}`, val:Number((s.avg||0).toFixed(2))})));
+}
+
+/* =========================================================================
+   ANNUAL ACTIVITY CALENDAR  (plan activities across all four campuses)
+========================================================================= */
+function activityStatusTag(status){
+  const cls = status==='Completed'?'tag-live' : status==='Cancelled'?'tag-danger' : status==='Postponed'?'tag-none' : 'tag-warn';
+  return `<span class="tag ${cls}">${status||'Planned'}</span>`;
+}
+function activityCampusLabel(a){
+  if(!a.campuses || !a.campuses.length) return '—';
+  if(a.campuses.length===CAMPUSES.length) return 'All Campuses';
+  return a.campuses.map(c=> c.replace('Graphic Era (Deemed to be University)','GE Deemed University')).join(', ');
+}
+// Academic-year calendar months in order, Jul(startYear) -> Jun(startYear+1)
+function calendarMonthsForYear(startYear){
+  const out = [];
+  for(let i=0;i<12;i++){
+    const m = ((6+i)%12)+1; // 7,8,...12,1,...6
+    const y = m>=7? startYear : startYear+1;
+    out.push(y+'-'+String(m).padStart(2,'0'));
+  }
+  return out;
+}
+function activityYearsAvailable(){
+  const s = new Set();
+  STATE.activities.forEach(a=>{ if(a.startDate){ const y=Number(a.startDate.slice(0,4)); const mo=Number(a.startDate.slice(5,7)); s.add(mo>=7? y : y-1); } });
+  s.add(STATE.calYear);
+  return Array.from(s).sort((a,b)=>a-b);
+}
+function activitiesFiltered({year, campus, status, type}={}){
+  let rows = STATE.activities.slice();
+  if(year!==undefined && year!==null && year!==''){
+    const months = new Set(calendarMonthsForYear(Number(year)));
+    rows = rows.filter(a=> a.startDate && months.has(a.startDate.slice(0,7)));
+  }
+  if(campus && campus!=='All') rows = rows.filter(a=> (a.campuses||[]).includes(campus));
+  if(status && status!=='All') rows = rows.filter(a=> a.status===status);
+  if(type && type!=='All') rows = rows.filter(a=> a.type===type);
+  return rows.sort((a,b)=> new Date(a.startDate||0)-new Date(b.startDate||0));
+}
+function activitiesInMonth(monthStr, campus){
+  return STATE.activities.filter(a=> a.startDate && a.startDate.slice(0,7)===monthStr && (!campus||campus==='All'||(a.campuses||[]).includes(campus)))
+    .sort((a,b)=> new Date(a.startDate)-new Date(b.startDate));
+}
+function activityFeedbackAvg(a){ return avg(a.feedbackEntries||[], 'rating'); }
+function activityCardHtml(a){
+  return `
+    <div class="card" style="padding:12px 14px;margin-bottom:8px;cursor:${STATE.isAdmin?'pointer':'default'}" ${STATE.isAdmin?`onclick="openActivityModal('${a.id}')"`:''}>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div>
+          <div style="font-weight:600;font-size:13.5px">${a.title}</div>
+          <div style="font-size:11.5px;color:var(--ink-faint);margin-top:2px">${a.type||''} ${a.department&&a.department!=='All'?'· '+a.department:''}</div>
+        </div>
+        ${activityStatusTag(a.status)}
+      </div>
+      <div style="font-size:12px;color:var(--ink-dim);margin-top:7px">📅 ${a.startDate}${a.endDate&&a.endDate!==a.startDate?' → '+a.endDate:''}</div>
+      <div style="font-size:12px;color:var(--ink-dim);margin-top:3px">🏫 ${activityCampusLabel(a)}</div>
+      ${a.owner?`<div style="font-size:12px;color:var(--ink-dim);margin-top:3px">👤 ${a.owner}</div>`:''}
+    </div>`;
+}
+function renderActivityCalendar(root){
+  const years = activityYearsAvailable();
+  root.innerHTML = `
+    <div class="section-title-row">
+      <h2>Annual Activity Calendar</h2>
+      <div class="section-actions no-print">
+        ${refreshButtonHtml()}
+        ${STATE.isAdmin? `<button class="btn btn-maroon btn-sm" id="addActivity">+ Plan Activity</button>`:''}
+      </div>
+    </div>
+    <div class="hint" style="margin-bottom:10px">Plan and track activities for the whole academic year (Jul–Jun) across all four campuses in one place.</div>
+    <div class="filters no-print" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <div class="field" style="min-width:160px"><label>Academic Year</label>
+        <select id="calYearSel">${years.map(y=>`<option value="${y}" ${y===STATE.calYear?'selected':''}>${y}-${String(y+1).slice(2)}</option>`).join('')}</select>
+      </div>
+      <div class="field" style="min-width:200px"><label>Campus</label>
+        <select id="calCampusSel"><option value="All" ${STATE.calCampus==='All'?'selected':''}>All Campuses</option>${CAMPUSES.map(c=>`<option value="${c}" ${STATE.calCampus===c?'selected':''}>${c}</option>`).join('')}</select>
+      </div>
+      <div class="field" style="min-width:150px"><label>Status</label>
+        <select id="calStatusSel"><option value="All" ${STATE.calStatus==='All'?'selected':''}>All Statuses</option>${ACTIVITY_STATUSES.map(s=>`<option value="${s}" ${STATE.calStatus===s?'selected':''}>${s}</option>`).join('')}</select>
+      </div>
+    </div>
+    <div id="calGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-top:14px"></div>
+  `;
+  wireRefreshButton();
+  if(STATE.isAdmin) document.getElementById('addActivity').addEventListener('click', ()=>openActivityModal());
+  document.getElementById('calYearSel').addEventListener('change', e=>{ STATE.calYear=Number(e.target.value); render(); });
+  document.getElementById('calCampusSel').addEventListener('change', e=>{ STATE.calCampus=e.target.value; render(); });
+  document.getElementById('calStatusSel').addEventListener('change', e=>{ STATE.calStatus=e.target.value; render(); });
+
+  const grid = document.getElementById('calGrid');
+  const months = calendarMonthsForYear(STATE.calYear);
+  grid.innerHTML = months.map(m=>{
+    let items = activitiesInMonth(m, STATE.calCampus);
+    if(STATE.calStatus!=='All') items = items.filter(a=>a.status===STATE.calStatus);
+    return `
+      <div class="card" style="padding:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <h3 style="font-size:15px">${monthLabel(m)}</h3>
+          <span class="hint">${items.length} planned</span>
+        </div>
+        ${items.length? items.map(activityCardHtml).join('') : `<div class="empty" style="padding:14px 0"><div class="big">🗓️</div>Nothing planned yet.</div>`}
+      </div>`;
+  }).join('');
+}
+
+/* ---------- ACTIVITY REPORT PAGE ---------- */
+function activityReportSummary(rows){
+  const total = rows.length;
+  const byStatus = {}; ACTIVITY_STATUSES.forEach(s=> byStatus[s]=0);
+  rows.forEach(a=> byStatus[a.status||'Planned'] = (byStatus[a.status||'Planned']||0)+1);
+  const byCampus = {}; CAMPUSES.forEach(c=> byCampus[c]=0);
+  rows.forEach(a=> (a.campuses||[]).forEach(c=> byCampus[c]=(byCampus[c]||0)+1));
+  const byType = {};
+  rows.forEach(a=> byType[a.type||'Other']=(byType[a.type||'Other']||0)+1);
+  return {total, byStatus, byCampus, byType};
+}
+function renderActivityReport(root){
+  const years = activityYearsAvailable();
+  if(!STATE.arYear) STATE.arYear = String(STATE.calYear);
+  root.innerHTML = `
+    <div class="section-title-row">
+      <h2>Activity Report</h2>
+      <div class="section-actions no-print">
+        ${refreshButtonHtml()}
+        <button class="btn btn-maroon btn-sm" id="arDownloadPdf">⬇ Download PDF</button>
+        <button class="btn btn-sm" id="arDownloadXlsx">⬇ Excel</button>
+        ${STATE.isAdmin? `<button class="btn btn-gold btn-sm" id="addActivity2">+ Plan Activity</button>`:''}
+      </div>
+    </div>
+    <div class="filters no-print" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <div class="field" style="min-width:160px"><label>Academic Year</label>
+        <select id="arYearSel"><option value="" ${STATE.arYear===''?'selected':''}>All Years</option>${years.map(y=>`<option value="${y}" ${String(y)===String(STATE.arYear)?'selected':''}>${y}-${String(y+1).slice(2)}</option>`).join('')}</select>
+      </div>
+      <div class="field" style="min-width:200px"><label>Campus</label>
+        <select id="arCampusSel"><option value="All" ${STATE.arCampus==='All'?'selected':''}>All Campuses</option>${CAMPUSES.map(c=>`<option value="${c}" ${STATE.arCampus===c?'selected':''}>${c}</option>`).join('')}</select>
+      </div>
+      <div class="field" style="min-width:150px"><label>Status</label>
+        <select id="arStatusSel"><option value="All" ${STATE.arStatus==='All'?'selected':''}>All Statuses</option>${ACTIVITY_STATUSES.map(s=>`<option value="${s}" ${STATE.arStatus===s?'selected':''}>${s}</option>`).join('')}</select>
+      </div>
+      <div class="field" style="min-width:180px"><label>Activity Type</label>
+        <select id="arTypeSel"><option value="All" ${STATE.arType==='All'?'selected':''}>All Types</option>${ACTIVITY_TYPES.map(t=>`<option value="${t}" ${STATE.arType===t?'selected':''}>${t}</option>`).join('')}</select>
+      </div>
+    </div>
+    <div id="arKpis" class="kpi-grid" style="margin-top:14px"></div>
+    <div class="section-title-row"><h2>Activities by Campus</h2></div>
+    <div class="card" id="arByCampus"></div>
+    <div class="section-title-row"><h2>Activity Log</h2></div>
+    <div class="card" style="overflow-x:auto">
+      <table id="arTable"></table>
+    </div>
+    <div class="section-title-row"><h2>Post-Activity Reports &amp; Feedback</h2><span class="hint">Filed write-ups and participant feedback for activities in this filter</span></div>
+    <div id="arReportsBlock"></div>
+  `;
+  wireRefreshButton();
+  if(STATE.isAdmin){ const b=document.getElementById('addActivity2'); if(b) b.addEventListener('click', ()=>openActivityModal()); }
+  document.getElementById('arYearSel').addEventListener('change', e=>{ STATE.arYear=e.target.value; render(); });
+  document.getElementById('arCampusSel').addEventListener('change', e=>{ STATE.arCampus=e.target.value; render(); });
+  document.getElementById('arStatusSel').addEventListener('change', e=>{ STATE.arStatus=e.target.value; render(); });
+  document.getElementById('arTypeSel').addEventListener('change', e=>{ STATE.arType=e.target.value; render(); });
+  document.getElementById('arDownloadPdf').addEventListener('click', ()=>generateActivityReportPdf());
+  document.getElementById('arDownloadXlsx').addEventListener('click', ()=>exportActivitiesExcel());
+
+  const rows = activitiesFiltered({year:STATE.arYear, campus:STATE.arCampus, status:STATE.arStatus, type:STATE.arType});
+  const sm = activityReportSummary(rows);
+
+  document.getElementById('arKpis').innerHTML = `
+    <div class="kpi-card"><div class="kpi-label">Total Activities</div><div class="kpi-value">${sm.total}</div></div>
+    <div class="kpi-card"><div class="kpi-label">Planned</div><div class="kpi-value">${sm.byStatus['Planned']||0}</div></div>
+    <div class="kpi-card"><div class="kpi-label">In Progress</div><div class="kpi-value">${sm.byStatus['In Progress']||0}</div></div>
+    <div class="kpi-card"><div class="kpi-label">Completed</div><div class="kpi-value">${sm.byStatus['Completed']||0}</div></div>
+    <div class="kpi-card"><div class="kpi-label">Postponed</div><div class="kpi-value">${sm.byStatus['Postponed']||0}</div></div>
+    <div class="kpi-card"><div class="kpi-label">Cancelled</div><div class="kpi-value">${sm.byStatus['Cancelled']||0}</div></div>
+  `;
+  renderLeaderboardBlock(document.getElementById('arByCampus'), CAMPUSES.map(c=>({name:c, val:sm.byCampus[c]||0})));
+
+  const table = document.getElementById('arTable');
+  if(!rows.length){
+    table.outerHTML = `<div class="empty"><div class="big">🗓️</div>No activities match this filter yet.</div>`;
+  } else {
+    table.innerHTML = `
+      <thead><tr><th>Title</th><th>Type</th><th>Campus(es)</th><th>Department</th><th>Start</th><th>End</th><th>Owner</th><th>Status</th><th>Feedback</th><th>Report</th><th></th></tr></thead>
+      <tbody>${rows.map(a=>{
+        const favg = activityFeedbackAvg(a);
+        const fcount = (a.feedbackEntries||[]).length;
+        const hasReport = !!(a.reportSummary||a.reportAttendance||a.reportOutcomes);
+        return `
+        <tr>
+          <td>${a.title}</td>
+          <td>${a.type||''}</td>
+          <td>${activityCampusLabel(a)}</td>
+          <td>${a.department||'All'}</td>
+          <td>${a.startDate||''}</td>
+          <td>${a.endDate||a.startDate||''}</td>
+          <td>${a.owner||'—'}</td>
+          <td>${activityStatusTag(a.status)}</td>
+          <td>${favg!==null? `<span class="stars">${'★'.repeat(Math.round(favg))}${'☆'.repeat(5-Math.round(favg))}</span> (${favg.toFixed(1)}, ${fcount})` : '<span class="hint">No feedback yet</span>'}</td>
+          <td>${hasReport? '<span class="tag tag-live">Filed</span>' : '<span class="tag tag-none">Pending</span>'}</td>
+          <td class="row-actions no-print">
+            <button class="btn btn-ghost btn-sm" onclick="openActivityFeedbackModal('${a.id}')">＋ Feedback</button>
+            ${STATE.isAdmin? `<button class="btn btn-ghost btn-sm" onclick="openActivityReportFormModal('${a.id}')">📄 Report</button>`:''}
+            ${STATE.isAdmin? `<button class="icon-btn" onclick="openActivityModal('${a.id}')">✎</button> <button class="icon-btn" onclick="deleteActivity('${a.id}')">🗑</button>`:''}
+          </td>
+        </tr>`;}).join('')}
+      </tbody>`;
+  }
+
+  const reportsWrap = document.getElementById('arReportsBlock');
+  const withContent = rows.filter(a=> (a.feedbackEntries||[]).length || a.reportSummary || a.reportAttendance || a.reportOutcomes);
+  reportsWrap.innerHTML = withContent.length? withContent.map(a=>{
+    const favg = activityFeedbackAvg(a);
+    return `
+    <div class="card" style="padding:14px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div>
+          <div style="font-weight:600;font-size:14px">${a.title}</div>
+          <div class="hint">${a.startDate||''} · ${activityCampusLabel(a)}</div>
+        </div>
+        ${activityStatusTag(a.status)}
+      </div>
+      ${(a.reportSummary||a.reportAttendance||a.reportOutcomes)? `
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line)">
+          <div style="font-size:12.5px;font-weight:600;color:var(--navy)">📄 Activity Report</div>
+          ${a.reportAttendance? `<div style="font-size:12.5px;margin-top:4px">Attendance: <b>${a.reportAttendance}</b></div>`:''}
+          ${a.reportSummary? `<div style="font-size:12.5px;margin-top:4px">${a.reportSummary}</div>`:''}
+          ${a.reportOutcomes? `<div style="font-size:12.5px;margin-top:4px;color:var(--ink-dim)">Outcomes: ${a.reportOutcomes}</div>`:''}
+          ${a.reportMediaLink? `<div style="margin-top:4px"><a class="li-link" href="${a.reportMediaLink}" target="_blank" rel="noopener">📎 Media / coverage link ↗</a></div>`:''}
+          <div class="hint" style="margin-top:4px">Filed by ${a.reportSubmittedBy||'—'} ${a.reportDate?('· '+a.reportDate):''}</div>
+        </div>` : `<div class="hint" style="margin-top:8px">No activity report filed yet.</div>`}
+      ${(a.feedbackEntries||[]).length? `
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line)">
+          <div style="font-size:12.5px;font-weight:600;color:var(--navy)">💬 Feedback — <span class="stars">${'★'.repeat(Math.round(favg))}${'☆'.repeat(5-Math.round(favg))}</span> (${favg.toFixed(1)} avg, ${a.feedbackEntries.length} response${a.feedbackEntries.length===1?'':'s'})</div>
+          ${a.feedbackEntries.slice(-3).reverse().map(f=>`<div style="font-size:12px;color:var(--ink-dim);margin-top:4px">“${f.comment||'No comment'}” — ${f.submittedBy||'Anonymous'} (${f.rating}★)</div>`).join('')}
+        </div>` : ''}
+    </div>`;
+  }).join('') : `<div class="empty"><div class="big">📄</div>No reports or feedback filed yet for this filter.</div>`;
+}
+
+function deleteActivity(id){
+  if(!confirm('Remove this activity from the plan?')) return;
+  STATE.activities = STATE.activities.filter(a=>a.id!==id);
+  toast('Activity removed.'); render(); pushToBackend();
+}
+
+function openActivityModal(id){
+  const a = id? STATE.activities.find(x=>x.id===id) : null;
+  const m = document.getElementById('modalRoot');
+  const selectedCampuses = a? (a.campuses||[]) : CAMPUSES.slice();
+  m.innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
+      <div class="modal" style="max-width:640px">
+        <h2>${a?'Edit Planned Activity':'Plan New Activity'}</h2>
+        <div class="sub">Schedule an activity across one, several, or all four campuses for the academic-year plan.</div>
+        <div class="field"><label>Activity Title</label><input id="acTitle" value="${a?a.title:''}" placeholder="e.g. Alumni LinkedIn Drive Week"></div>
+        <div class="field-row">
+          <div class="field"><label>Activity Type</label><select id="acType">${ACTIVITY_TYPES.map(t=>`<option ${a&&a.type===t?'selected':''}>${t}</option>`).join('')}</select></div>
+          <div class="field"><label>Status</label><select id="acStatus">${ACTIVITY_STATUSES.map(s=>`<option ${a?a.status===s:(s==='Planned')?'selected':''}>${s}</option>`).join('')}</select></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Start Date</label><input type="date" id="acStart" value="${a?a.startDate||'':''}"></div>
+          <div class="field"><label>End Date (optional)</label><input type="date" id="acEnd" value="${a?a.endDate||'':''}"></div>
+        </div>
+        <div class="field"><label>Department (optional)</label><select id="acDept"><option value="All">All Departments</option>${DEPARTMENTS.map(d=>`<option ${a&&a.department===d?'selected':''}>${d}</option>`).join('')}</select></div>
+        <div class="field"><label>Owner / Coordinator</label><input id="acOwner" value="${a?a.owner||'':''}" placeholder="e.g. SPOC name"></div>
+        <div class="field">
+          <label>Campuses Covered</label>
+          <div class="checkbox-grid">
+            ${CAMPUSES.map(c=>`<label class="checkbox-row"><input type="checkbox" class="acCampus" value="${c}" ${selectedCampuses.includes(c)?'checked':''}> ${c}</label>`).join('')}
+          </div>
+        </div>
+        <div class="field"><label>Description / Notes</label><textarea id="acDesc" rows="3" style="width:100%;font-family:inherit;padding:9px 11px;border-radius:9px;border:1px solid var(--line-strong);background:var(--bg-card)">${a?a.description||'':''}</textarea></div>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+          <button class="btn btn-gold" id="acSave">${a?'Save':'Add to Calendar'}</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('acSave').addEventListener('click', async ()=>{
+    const campuses = Array.from(document.querySelectorAll('.acCampus:checked')).map(cb=>cb.value);
+    const data = {
+      title: document.getElementById('acTitle').value.trim(),
+      type: document.getElementById('acType').value,
+      status: document.getElementById('acStatus').value,
+      startDate: document.getElementById('acStart').value,
+      endDate: document.getElementById('acEnd').value,
+      department: document.getElementById('acDept').value,
+      owner: document.getElementById('acOwner').value.trim(),
+      campuses,
+      description: document.getElementById('acDesc').value.trim(),
+    };
+    if(!data.title || !data.startDate){ toast('Title and start date are required.', 'err'); return; }
+    if(!campuses.length){ toast('Select at least one campus.', 'err'); return; }
+    if(a){ Object.assign(a,data); toast('Activity updated.'); }
+    else { STATE.activities.push({id:uid(), createdAt:new Date().toISOString(), ...data}); toast('Activity added to the calendar.'); }
+    closeModal(); render(); await pushToBackend();
+  });
+}
+
+function openActivityFeedbackModal(activityId){
+  const a = STATE.activities.find(x=>x.id===activityId);
+  if(!a) return;
+  const m = document.getElementById('modalRoot');
+  m.innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
+      <div class="modal">
+        <h2>Activity Feedback</h2>
+        <div class="sub">"${a.title}" — ${a.startDate||''}</div>
+        <div class="field"><label>Your Name (optional)</label><input id="afName" placeholder="e.g. Dr. Ramesh Bhatt"></div>
+        <div class="field"><label>Overall Rating (1–5)</label>
+          <select id="afRating"><option value="5">5 — Excellent</option><option value="4">4 — Good</option><option value="3" selected>3 — Average</option><option value="2">2 — Below Average</option><option value="1">1 — Poor</option></select></div>
+        <div class="field"><label>Comments (optional)</label><textarea id="afComment" rows="3"></textarea></div>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+          <button class="btn btn-gold" id="afSave">Submit Feedback</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('afSave').addEventListener('click', async ()=>{
+    const entry = { id:uid(), rating:Number(document.getElementById('afRating').value),
+      comment:document.getElementById('afComment').value.trim(),
+      submittedBy:document.getElementById('afName').value.trim(), date:new Date().toISOString().slice(0,10) };
+    if(!a.feedbackEntries) a.feedbackEntries = [];
+    a.feedbackEntries.push(entry);
+    toast('Feedback submitted — thank you!');
+    closeModal(); render(); await pushToBackend();
+  });
+}
+
+function openActivityReportFormModal(activityId){
+  const a = STATE.activities.find(x=>x.id===activityId);
+  if(!a) return;
+  const m = document.getElementById('modalRoot');
+  m.innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
+      <div class="modal" style="max-width:640px">
+        <h2>Activity Report</h2>
+        <div class="sub">"${a.title}" — ${a.startDate||''} · ${activityCampusLabel(a)}</div>
+        <div class="field-row">
+          <div class="field"><label>Attendance / Participation</label><input type="number" id="arfAttendance" value="${a.reportAttendance||''}" placeholder="e.g. 180"></div>
+          <div class="field"><label>Filed By</label><input id="arfBy" value="${a.reportSubmittedBy||''}" placeholder="e.g. SPOC name"></div>
+        </div>
+        <div class="field"><label>Summary of the Activity</label><textarea id="arfSummary" rows="3" placeholder="What happened, who was involved…">${a.reportSummary||''}</textarea></div>
+        <div class="field"><label>Outcomes / Impact</label><textarea id="arfOutcomes" rows="3" placeholder="Key outcomes, learnings, follow-ups…">${a.reportOutcomes||''}</textarea></div>
+        <div class="field"><label>Media / Coverage Link (optional)</label><input id="arfMedia" value="${a.reportMediaLink||''}" placeholder="https://drive.google.com/… or LinkedIn post URL"></div>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+          <button class="btn btn-gold" id="arfSave">Save Report</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('arfSave').addEventListener('click', async ()=>{
+    a.reportAttendance = Number(document.getElementById('arfAttendance').value)||0;
+    a.reportSubmittedBy = document.getElementById('arfBy').value.trim();
+    a.reportSummary = document.getElementById('arfSummary').value.trim();
+    a.reportOutcomes = document.getElementById('arfOutcomes').value.trim();
+    a.reportMediaLink = document.getElementById('arfMedia').value.trim();
+    a.reportDate = new Date().toISOString().slice(0,10);
+    toast('Activity report saved.');
+    closeModal(); render(); await pushToBackend();
+  });
+}
+
+function exportActivitiesExcel(){
+  const rows = flattenForExcel(STATE.activities, ['feedbackEntries']).map(a=>({...a, campuses:(a.campuses||[]).join('; ')}));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "Activities");
+  XLSX.writeFile(wb, `GEHU_Activity_Calendar_${STATE.arYear||STATE.calYear}.xlsx`);
+  toast('Activity Excel export ready.');
+}
+
+function generateActivityReportPdf(){
+  const rows = activitiesFiltered({year:STATE.arYear, campus:STATE.arCampus, status:STATE.arStatus, type:STATE.arType});
+  const sm = activityReportSummary(rows);
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF('l', 'mm', 'a4');
+  const navyRGB = [16,28,51];
+  const pageW = doc.internal.pageSize.getWidth();
+  const yearLabel = STATE.arYear!=='' ? `${STATE.arYear}-${String(Number(STATE.arYear)+1).slice(2)}` : 'All Years';
+
+  doc.setFontSize(18); doc.setTextColor(...navyRGB); doc.setFont(undefined,'bold');
+  doc.text(INSTITUTE_NAME, 14, 18);
+  doc.setFontSize(13); doc.text('Activity Report — Annual Calendar', 14, 26);
+  doc.setFont(undefined,'normal'); doc.setFontSize(9); doc.setTextColor(100);
+  doc.text(`Generated: ${new Date().toLocaleString()}  ·  Academic Year: ${yearLabel}  ·  Campus: ${STATE.arCampus}  ·  Status: ${STATE.arStatus}  ·  Type: ${STATE.arType}`, 14, 33);
+
+  doc.autoTable({ startY:40, head:[['Metric','Value']], body:[
+    ['Total Activities', sm.total],
+    ['Planned', sm.byStatus['Planned']||0],
+    ['In Progress', sm.byStatus['In Progress']||0],
+    ['Completed', sm.byStatus['Completed']||0],
+    ['Postponed', sm.byStatus['Postponed']||0],
+    ['Cancelled', sm.byStatus['Cancelled']||0],
+  ], theme:'grid', headStyles:{fillColor:navyRGB}, tableWidth:90 });
+
+  doc.autoTable({ startY:40, margin:{left:110}, head:[['Campus','Activities']], body:CAMPUSES.map(c=>[c, sm.byCampus[c]||0]), theme:'grid', headStyles:{fillColor:navyRGB}, tableWidth:pageW-124 });
+
+  const y2 = doc.lastAutoTable.finalY + 10;
+  doc.setFontSize(12); doc.setTextColor(...navyRGB); doc.text('Activity Log', 14, y2);
+  doc.autoTable({ startY:y2+4, head:[['Title','Type','Campus(es)','Department','Start','End','Owner','Status','Avg Rating','Report']],
+    body: rows.length? rows.map(a=>{
+      const favg = activityFeedbackAvg(a);
+      const hasReport = !!(a.reportSummary||a.reportAttendance||a.reportOutcomes);
+      return [a.title, a.type||'', activityCampusLabel(a), a.department||'All', a.startDate||'', a.endDate||a.startDate||'', a.owner||'—', a.status||'Planned', favg===null?'—':favg.toFixed(1)+'/5', hasReport?'Filed':'Pending'];
+    }) : [['No activities match this filter','','','','','','','','','']],
+    theme:'grid', headStyles:{fillColor:navyRGB}, styles:{fontSize:8} });
+
+  const withReports = rows.filter(a=> a.reportSummary || a.reportAttendance || a.reportOutcomes);
+  if(withReports.length){
+    const y3 = doc.lastAutoTable.finalY + 10;
+    doc.setFontSize(12); doc.setTextColor(...navyRGB); doc.text('Post-Activity Reports', 14, y3);
+    doc.autoTable({ startY:y3+4, head:[['Title','Date','Attendance','Summary','Outcomes / Impact','Filed By']],
+      body: withReports.map(a=>[a.title, a.startDate||'', a.reportAttendance||'—', a.reportSummary||'—', a.reportOutcomes||'—', a.reportSubmittedBy||'—']),
+      theme:'grid', headStyles:{fillColor:navyRGB}, styles:{fontSize:8}, columnStyles:{3:{cellWidth:70},4:{cellWidth:70}} });
+  }
+
+  const feedbackRows = rows.flatMap(a=> (a.feedbackEntries||[]).map(f=>[a.title, f.rating+'/5', f.comment||'—', f.submittedBy||'Anonymous', f.date||'']));
+  if(feedbackRows.length){
+    const y4 = doc.lastAutoTable.finalY + 10;
+    doc.setFontSize(12); doc.setTextColor(...navyRGB); doc.text('Feedback Log', 14, y4);
+    doc.autoTable({ startY:y4+4, head:[['Activity','Rating','Comment','Submitted By','Date']],
+      body: feedbackRows, theme:'grid', headStyles:{fillColor:navyRGB}, styles:{fontSize:8}, columnStyles:{2:{cellWidth:90}} });
+  }
+
+  const pageCount = doc.internal.getNumberOfPages();
+  for(let i=1;i<=pageCount;i++){
+    doc.setPage(i);
+    doc.setFontSize(8); doc.setTextColor(150);
+    doc.text(`Page ${i} of ${pageCount}`, doc.internal.pageSize.getWidth()-30, doc.internal.pageSize.getHeight()-8);
+  }
+  doc.save(`GEHU_Activity_Report_${STATE.arYear||'all'}.pdf`);
+  toast('Activity report downloaded.');
 }
 
 /* ---------- ALUMNI HELP DESK ---------- */
@@ -3048,6 +3502,7 @@ function exportExcel(){
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(flattenForExcel(STATE.coordinators, ['achievements','metricsHistory'])), "Coordinators");
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(STATE.alumniWapp.map(alumniWappToExcelRow)), "Alumni in Wapp");
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(flattenForExcel(STATE.helpdesk, ['travelAssistance','documentsShared','attachments','commLog'])), "Alumni Help Desk");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(flattenForExcel(STATE.activities, ['feedbackEntries']).map(a=>({...a, campuses:(a.campuses||[]).join('; ')}))), "Activity Calendar");
   XLSX.writeFile(wb, `GEHU_LinkedIn_CommandCenter_${STATE.month}.xlsx`);
   toast('Excel export ready.');
 }
@@ -3064,6 +3519,7 @@ function importExcel(file){
       let coordinators = getSheet("Coordinators"); if(coordinators){ coordinators.forEach(c=>{ if(!c.id) c.id=uid(); }); STATE.coordinators = unflattenFromExcel(coordinators, ['achievements','metricsHistory']); }
       let alumniWapp = getSheet("Alumni in Wapp"); if(alumniWapp){ STATE.alumniWapp = alumniWapp.map(row=>({id:uid(), ...excelRowToAlumniWapp(row)})); }
       let helpdesk = getSheet("Alumni Help Desk"); if(helpdesk){ helpdesk.forEach(hd=>{ if(!hd.id) hd.id=uid(); }); STATE.helpdesk = unflattenFromExcel(helpdesk, ['travelAssistance','documentsShared','attachments','commLog']); }
+      let activities = getSheet("Activity Calendar"); if(activities){ activities.forEach(ac=>{ if(!ac.id) ac.id=uid(); ac.campuses = ac.campuses? String(ac.campuses).split(';').map(s=>s.trim()).filter(Boolean) : []; }); STATE.activities = unflattenFromExcel(activities, ['feedbackEntries']); }
       toast('Excel import complete.');
       render(); pushToBackend();
     }catch(err){ console.error(err); toast('Import failed — check the file format.', 'err'); }
@@ -3249,6 +3705,36 @@ function generateCustomReport(sectionIds, orientation, filters){
         body: sessions.length? sessions.map(s=> isDetailed? [s.speaker, s.topic, s.date, s.campus, s.company||'', s.attendance||0, s.status] : [s.speaker, s.topic, s.date, s.campus, s.company||'', s.status])
           : [isDetailed? ['No sessions in this period/filter','','','','','',''] : ['No sessions in this period/filter','','','','','']],
         theme:'grid', headStyles:{fillColor:navyRGB}, styles:{fontSize:8} });
+    }
+    else if(id==='activities'){
+      const startYear = months.length? Number(months[0].slice(0,4)) - (Number(months[0].slice(5,7))>=7?0:1) : STATE.calYear;
+      let rows = activitiesFiltered({year:startYear, campus, status:'All', type:'All'});
+      if(department!=='All') rows = rows.filter(a=> a.department==='All' || a.department===department);
+      const sm = activityReportSummary(rows);
+      doc.autoTable({ startY:y, head:[['Metric','Value']], body:[
+        ['Total Activities', sm.total],
+        ['Planned', sm.byStatus['Planned']||0],
+        ['In Progress', sm.byStatus['In Progress']||0],
+        ['Completed', sm.byStatus['Completed']||0],
+        ['Postponed', sm.byStatus['Postponed']||0],
+        ['Cancelled', sm.byStatus['Cancelled']||0],
+      ], theme:'grid', headStyles:{fillColor:navyRGB} });
+      const y2 = doc.lastAutoTable.finalY + 10;
+      doc.setFontSize(11); doc.setTextColor(...navyRGB); doc.text('Activity Log', 14, y2);
+      doc.autoTable({ startY:y2+4, head:[['Title','Type','Campus(es)','Start','End','Owner','Status','Avg Rating']],
+        body: rows.length? rows.map(a=>[a.title, a.type||'', activityCampusLabel(a), a.startDate||'', a.endDate||a.startDate||'', a.owner||'—', a.status||'Planned', (()=>{const v=activityFeedbackAvg(a); return v===null?'—':v.toFixed(1)+'/5';})()])
+          : [['No activities match this filter','','','','','','','']],
+        theme:'grid', headStyles:{fillColor:navyRGB}, styles:{fontSize:8} });
+      if(isDetailed){
+        const withReports = rows.filter(a=> a.reportSummary || a.reportAttendance || a.reportOutcomes);
+        if(withReports.length){
+          const y3 = doc.lastAutoTable.finalY + 10;
+          doc.setFontSize(11); doc.setTextColor(...navyRGB); doc.text('Post-Activity Reports', 14, y3);
+          doc.autoTable({ startY:y3+4, head:[['Title','Date','Attendance','Summary','Outcomes / Impact']],
+            body: withReports.map(a=>[a.title, a.startDate||'', a.reportAttendance||'—', a.reportSummary||'—', a.reportOutcomes||'—']),
+            theme:'grid', headStyles:{fillColor:navyRGB}, styles:{fontSize:8} });
+        }
+      }
     }
     else if(id==='linkedin'){
       let cts = reportCampusTotals(months, department);
