@@ -962,13 +962,50 @@ async function pullFromBackend(){
   }
 }
 
-async function pushToBackend(){
+// changedKeys: the collection name(s) actually touched by this edit, e.g.
+// "records" or ["alumniWapp","chapters"]. Leave undefined only for bulk
+// operations (like Excel import) where the local copy is meant to become
+// the new source of truth for everything.
+//
+// WHY THIS MATTERS: every save used to overwrite ALL 8 sheet tabs with
+// whatever this browser tab currently held in memory. If a second tab,
+// device, or another SPOC had synced anything more recent for a DIFFERENT
+// collection since this tab last loaded, this tab's push would silently
+// erase that — which looks like "data gets deleted a few seconds after
+// entering it" (really: someone else's tab pushing its stale snapshot
+// right after yours). Now we re-pull the latest server data right before
+// saving, and only send OUR local version for the collection(s) we
+// actually just edited; every other collection goes back exactly as the
+// server currently has it.
+async function pushToBackend(changedKeys){
   if(!SCRIPT_URL) return false;
+  const changed = changedKeys ? (Array.isArray(changedKeys) ? changedKeys : [changedKeys]) : null;
   try{
-    const payload = {
-      action:"save", pin: ADMIN_PIN,
-      data:{records:STATE.records, sessions:STATE.sessions, chapters:STATE.chapters, coordinators:STATE.coordinators, notifLog:STATE.notifLog, alumniWapp:STATE.alumniWapp, helpdesk:STATE.helpdesk, activities:STATE.activities}
-    };
+    let fresh = null;
+    if(changed){
+      try{
+        const res = await fetch(SCRIPT_URL+"?action=read", {method:"GET"});
+        if(res.ok) fresh = await res.json();
+      }catch(e){
+        console.warn("Pre-save refresh failed, saving local copy as-is:", e.message);
+      }
+    }
+
+    const keys = ["records","sessions","chapters","coordinators","notifLog","alumniWapp","helpdesk","activities"];
+    const data = {};
+    keys.forEach(function(key){
+      if(fresh && fresh[key] && changed && changed.indexOf(key) === -1){
+        // Not something we edited in this operation — trust the server's
+        // latest copy instead of our possibly-stale local one, and keep
+        // our own STATE in sync with it too.
+        data[key] = fresh[key];
+        STATE[key] = fresh[key];
+      } else {
+        data[key] = STATE[key];
+      }
+    });
+
+    const payload = { action:"save", pin: ADMIN_PIN, data: data };
     await fetch(SCRIPT_URL, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body:JSON.stringify(payload)});
     STATE.lastSync = new Date();
     return true;
@@ -2086,7 +2123,7 @@ function renderActivityReport(root){
 function deleteActivity(id){
   if(!confirm('Remove this activity from the plan?')) return;
   STATE.activities = STATE.activities.filter(a=>a.id!==id);
-  toast('Activity removed.'); render(); pushToBackend();
+  toast('Activity removed.'); render(); pushToBackend('activities');
 }
 
 function openActivityModal(id){
@@ -2141,7 +2178,7 @@ function openActivityModal(id){
     if(!campuses.length){ toast('Select at least one campus.', 'err'); return; }
     if(a){ Object.assign(a,data); toast('Activity updated.'); }
     else { STATE.activities.push({id:uid(), createdAt:new Date().toISOString(), ...data}); toast('Activity added to the calendar.'); }
-    closeModal(); render(); await pushToBackend();
+    closeModal(); render(); await pushToBackend('activities');
   });
 }
 
@@ -2171,7 +2208,7 @@ function openActivityFeedbackModal(activityId){
     if(!a.feedbackEntries) a.feedbackEntries = [];
     a.feedbackEntries.push(entry);
     toast('Feedback submitted — thank you!');
-    closeModal(); render(); await pushToBackend();
+    closeModal(); render(); await pushToBackend('activities');
   });
 }
 
@@ -2205,7 +2242,7 @@ function openActivityReportFormModal(activityId){
     a.reportMediaLink = document.getElementById('arfMedia').value.trim();
     a.reportDate = new Date().toISOString().slice(0,10);
     toast('Activity report saved.');
-    closeModal(); render(); await pushToBackend();
+    closeModal(); render(); await pushToBackend('activities');
   });
 }
 
@@ -2578,7 +2615,7 @@ function openHelpdeskModal(id){
     if(!data.alumnusName || !data.visitDate){ toast('Alumnus name and visit date are required.', 'err'); document.querySelector('.hd-msec-btn[data-hdsec="visit"]').click(); return; }
     if(!data.regNo && !data.enrollmentNo && !data.email && !data.mobile){ toast('Provide at least one verification detail (Reg./Enrollment No., Email or Mobile).', 'err'); document.querySelector('.hd-msec-btn[data-hdsec="visit"]').click(); return; }
     if(h){ Object.assign(h,data); toast('Help desk entry updated.'); } else { STATE.helpdesk.push({id:uid(), ...data}); toast('Alumni visit registered.'); }
-    closeModal(); render(); await pushToBackend();
+    closeModal(); render(); await pushToBackend('helpdesk');
   });
 }
 
@@ -3038,18 +3075,18 @@ function openRecordModal(id){
     if(rec){ Object.assign(rec, data); toast('Entry updated.'); }
     else { STATE.records.push({id:uid(), ...data}); toast('Entry added.'); }
     closeModal(); render();
-    await pushToBackend();
+    await pushToBackend('records');
   });
 }
 function deleteRecord(id){
   if(!confirm('Delete this entry? This cannot be undone.')) return;
   STATE.records = STATE.records.filter(r=>r.id!==id);
-  toast('Entry deleted.'); render(); pushToBackend();
+  toast('Entry deleted.'); render(); pushToBackend('records');
 }
 function deleteItem(collection, id){
   if(!confirm('Delete this item?')) return;
   STATE[collection] = STATE[collection].filter(x=>x.id!==id);
-  toast('Deleted.'); render(); pushToBackend();
+  toast('Deleted.'); render(); pushToBackend(collection);
 }
 
 function openSessionModal(id){
@@ -3135,7 +3172,7 @@ function openSessionModal(id){
       documents };
     if(!data.speaker || !data.date){ toast('Speaker and date are required.', 'err'); return; }
     if(s){ Object.assign(s,data); toast('Session updated.'); } else { STATE.sessions.push({id:uid(), feedbackEntries:[], ...data}); toast('Session logged.'); }
-    closeModal(); render(); await pushToBackend();
+    closeModal(); render(); await pushToBackend('sessions');
   });
 }
 
@@ -3171,7 +3208,7 @@ function openFeedbackModal(sessionId){
     if(!s.feedbackEntries) s.feedbackEntries = [];
     s.feedbackEntries.push(entry);
     toast('Feedback submitted — thank you!');
-    closeModal(); render(); await pushToBackend();
+    closeModal(); render(); await pushToBackend('sessions');
   });
 }
 
@@ -3275,7 +3312,7 @@ function openChapterModal(id){
       link:document.getElementById('cLink').value.trim(), history };
     if(!data.region){ toast('Region is required.', 'err'); return; }
     if(c){ Object.assign(c,data); toast('Chapter updated.'); } else { STATE.chapters.push({id:uid(),...data}); toast('Chapter added.'); }
-    closeModal(); render(); await pushToBackend();
+    closeModal(); render(); await pushToBackend(['chapters','notifLog']);
   });
 }
 
@@ -3391,7 +3428,7 @@ function openAlumniFormModal(chapterId, alumniId){
     }
     openChapterAlumniModal(chap.id);
     render();
-    await pushToBackend();
+    await pushToBackend(['alumniWapp','chapters','notifLog']);
   });
 }
 
@@ -3429,7 +3466,7 @@ function openAlumniTransferModal(alumniId){
     logChapterHistory(newChapter, {date, type:'transfer', count:1, note:`${a.name} transferred in`, performedBy:'', reason, previousChapter:currentChapter, newChapter});
     a.chapter = newChapter;
     toast(`${a.name} transferred to ${newChapter}.`);
-    closeModal(); render(); await pushToBackend();
+    closeModal(); render(); await pushToBackend(['alumniWapp','chapters','notifLog']);
   });
 }
 
@@ -3473,7 +3510,7 @@ function openAlumniDeletePreview(alumniId){
         note:`${a.name} removed from the alumni directory`, performedBy:'', reason:reason||'Not specified', previousChapter:'', newChapter:''});
     }
     toast('Alumni entry removed.');
-    closeModal(); render(); await pushToBackend();
+    closeModal(); render(); await pushToBackend(['alumniWapp','chapters','notifLog']);
   });
 }
 
@@ -3637,7 +3674,7 @@ function openCoordModal(id){
     };
     if(!data.name){ toast('Name is required.', 'err'); return; }
     if(c){ Object.assign(c,data); toast('Coordinator updated.'); } else { STATE.coordinators.push({id:uid(), ...data}); toast('Coordinator added.'); }
-    closeModal(); render(); await pushToBackend();
+    closeModal(); render(); await pushToBackend('coordinators');
   });
 }
 
